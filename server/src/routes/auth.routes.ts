@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { auth } from "../lib/auth.js";
 import { fromNodeHeaders } from "better-auth/node";
+import { requireAuth } from "../middlewares/auth.middleware.js";
 
 export default async function authRoutes(fastify: FastifyInstance) {
   fastify.route({
@@ -36,18 +37,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.get("/api/me", async (request, reply) => {
-    const session = await auth.api.getSession({
-      headers: fromNodeHeaders(request.headers),
-    });
-
-    if (!session) {
-      return reply.status(401).send({ error: "Unauthorized. Anda belum login." });
-    }
-
+  fastify.get("/api/me", { preHandler: requireAuth }, async (request, reply) => {
+    const user = (request as any).user;
+    
     return reply.send({
       message: "Anda berhasil mengakses rute terproteksi!",
-      user: session.user,
+      user: user,
     });
   });
 }
