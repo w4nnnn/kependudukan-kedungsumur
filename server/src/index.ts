@@ -1,12 +1,14 @@
 import fastify from "fastify";
 import "dotenv/config";
 import authRoutes from "./routes/auth.routes.js";
+import pendudukRoutes from "./routes/penduduk.routes.js";
 
 const app = fastify({
   logger: true,
 });
 
 app.register(authRoutes);
+app.register(pendudukRoutes);
 
 app.get("/", async (request, reply) => {
   return { message: "Selamat Datang di API Kependudukan Desa Kedungsumur" };
