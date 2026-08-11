@@ -1,23 +1,42 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/index.js";
-import { pendudukTable } from "../db/schema/schema.js";
-import { eq } from "drizzle-orm";
+import { pendudukTable, hashKependudukan } from "../db/schema/schema.js";
+import { eq, ilike, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 
-// Definisi tipe data agar TypeScript di Fastify tidak protes
 type PendudukInsert = typeof pendudukTable.$inferInsert;
 type ParamsWithId = { id: string };
 
 export default async function pendudukRoutes(fastify: FastifyInstance) {
   
-  // Semua route di dalam blok ini akan otomatis diproteksi oleh requireAuth
-  // Jadi hanya Admin yang bisa mengaksesnya
   fastify.addHook("preHandler", requireAuth);
 
-  // 1. GET ALL (Melihat semua data penduduk)
   fastify.get("/api/penduduk", async (request, reply) => {
     try {
-      const data = await db.select().from(pendudukTable);
+      const { search, nik, nokk, limit = 100, page = 1 } = request.query as any;
+      const offset = (Number(page) - 1) * Number(limit);
+
+      let query = db.select().from(pendudukTable).$dynamic();
+
+      const conditions = [];
+
+      if (search) {
+        conditions.push(ilike(pendudukTable.namaLengkap, `%${search}%`));
+      }
+      
+      if (nik) {
+        conditions.push(eq(pendudukTable.nikHash, hashKependudukan(nik)));
+      }
+
+      if (nokk) {
+        conditions.push(eq(pendudukTable.noKkHash, hashKependudukan(nokk)));
+      }
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
+      const data = await query.limit(Number(limit)).offset(offset);
       return reply.send({ success: true, data });
     } catch (error) {
       fastify.log.error(error);
@@ -25,7 +44,6 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // 2. GET ONE (Melihat data penduduk berdasarkan ID)
   fastify.get<{ Params: ParamsWithId }>("/api/penduduk/:id", async (request, reply) => {
     try {
       const { id } = request.params;
@@ -42,13 +60,17 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // 3. POST (Menambah data penduduk baru)
   fastify.post<{ Body: PendudukInsert }>("/api/penduduk", async (request, reply) => {
     try {
       const body = request.body;
       
-      // Catatan: NIK dan KK otomatis dienkripsi oleh Drizzle berkat Custom Type kita
-      const newData = await db.insert(pendudukTable).values(body).returning();
+      const newPendudukData = {
+        ...body,
+        nikHash: hashKependudukan(body.nik),
+        noKkHash: hashKependudukan(body.noKk)
+      };
+      
+      const newData = await db.insert(pendudukTable).values(newPendudukData).returning();
       
       return reply.status(201).send({ 
         success: true, 
@@ -57,7 +79,6 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
       });
     } catch (error: any) {
       fastify.log.error(error);
-      // Menangani pesan error jika NIK duplikat
       if (error.code === '23505') {
         return reply.status(400).send({ success: false, message: "NIK sudah terdaftar." });
       }
@@ -65,11 +86,13 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // 4. PUT (Mengubah data penduduk)
   fastify.put<{ Params: ParamsWithId; Body: Partial<PendudukInsert> }>("/api/penduduk/:id", async (request, reply) => {
     try {
       const { id } = request.params;
       const body = request.body;
+
+      if (body.nik) body.nikHash = hashKependudukan(body.nik);
+      if (body.noKk) body.noKkHash = hashKependudukan(body.noKk);
 
       const updatedData = await db
         .update(pendudukTable)
@@ -95,7 +118,6 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // 5. DELETE (Menghapus data penduduk)
   fastify.delete<{ Params: ParamsWithId }>("/api/penduduk/:id", async (request, reply) => {
     try {
       const { id } = request.params;
@@ -111,5 +133,4 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ success: false, message: "Gagal menghapus data." });
     }
   });
-
 }
