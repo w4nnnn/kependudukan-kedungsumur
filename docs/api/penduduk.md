@@ -7,12 +7,22 @@ Semua *endpoint* di bawah ini **terproteksi**. Anda **wajib login** terlebih dah
 
 ---
 
-## 1. Menampilkan Semua Data Penduduk
-Mengambil daftar seluruh penduduk yang ada di database.
-*(Perhatian: Pada aplikasi produksi berskala besar, pastikan untuk mengimplementasikan paginasi di masa depan).*
+## 1. Menampilkan & Mencari Data Penduduk (Paginasi)
+Mengambil daftar penduduk dari database. Mendukung fitur pencarian dinamis dan paginasi untuk mencegah kelebihan beban server.
 
 *   **URL:** `/api/penduduk`
 *   **Method:** `GET`
+*   **Query Parameters (Opsional):**
+    *   `search` (string): Mencari berdasarkan nama (menggunakan `ILIKE` / abaikan huruf besar-kecil).
+    *   `nik` (string): Mencari spesifik berdasarkan NIK. Pencarian NIK harus *exact match* (tepat 16 digit).
+    *   `nokk` (string): Mencari spesifik berdasarkan No KK.
+    *   `page` (number): Halaman data (default: `1`).
+    *   `limit` (number): Jumlah data per halaman (default: `100`).
+
+**Contoh Penggunaan URL:**
+*   `/api/penduduk?page=1&limit=50` (Tampilkan 50 orang pertama)
+*   `/api/penduduk?search=budi` (Cari orang bernama budi)
+*   `/api/penduduk?nik=3573010000000001` (Cari spesifik dari NIK)
 
 **Response Sukses (200 OK):**
 ```json
@@ -21,7 +31,7 @@ Mengambil daftar seluruh penduduk yang ada di database.
   "data": [
     {
       "id": "e4a2f8b1-3c9d...",
-      "nik": "3573010000000001", // Otomatis didekripsi dari database
+      "nik": "3573010000000001", // Otomatis didekripsi oleh server
       "noKk": "3573011111111111",
       "namaLengkap": "Budi Santoso",
       "tempatLahir": "Malang",
@@ -33,8 +43,7 @@ Mengambil daftar seluruh penduduk yang ada di database.
       "agama": "Islam",
       "statusPerkawinan": "Kawin",
       "pekerjaan": "PNS"
-    },
-    // ... data lainnya
+    }
   ]
 }
 ```
@@ -55,24 +64,16 @@ Mengambil detail informasi satu orang penduduk spesifik menggunakan UUID mereka.
   "data": {
     "id": "e4a2f8b1-3c9d...",
     "nik": "3573010000000001",
-    "namaLengkap": "Budi Santoso",
-    // ... data lainnya
+    "namaLengkap": "Budi Santoso"
   }
-}
-```
-
-**Response Gagal (404 Not Found):**
-```json
-{
-  "success": false,
-  "message": "Data penduduk tidak ditemukan."
 }
 ```
 
 ---
 
 ## 3. Menambahkan Data Penduduk Baru (Insert)
-Digunakan oleh Admin untuk mendaftarkan penduduk baru ke dalam sistem. Data NIK dan KK yang dikirimkan (*plain text*) akan **otomatis dienkripsi** sebelum disimpan ke database oleh Drizzle ORM.
+Digunakan oleh Admin untuk mendaftarkan penduduk baru ke dalam sistem. 
+> **Keamanan:** NIK dan No KK yang dikirimkan (*plain text*) akan **otomatis dienkripsi** dengan AES-256 dan di-hash (Blind Indexing) sebelum disimpan ke database oleh Drizzle ORM.
 
 *   **URL:** `/api/penduduk`
 *   **Method:** `POST`
@@ -103,9 +104,7 @@ Digunakan oleh Admin untuk mendaftarkan penduduk baru ke dalam sistem. Data NIK 
   "message": "Data penduduk berhasil ditambahkan.",
   "data": {
     "id": "baru-uuid-1234...",
-    "nik": "3573010000000001",
     "namaLengkap": "Budi Santoso"
-    // ...
   }
 }
 ```
@@ -121,7 +120,7 @@ Digunakan oleh Admin untuk mendaftarkan penduduk baru ke dalam sistem. Data NIK 
 ---
 
 ## 4. Mengubah Data Penduduk (Update)
-Digunakan untuk memperbarui data penduduk yang sudah ada (misalnya: pindah RT/RW, perubahan status perkawinan). Anda bisa mengirimkan sebagian data (*Partial*) saja, tidak harus seluruhnya.
+Digunakan untuk memperbarui data penduduk yang sudah ada (misalnya: pindah RT/RW, perubahan status perkawinan). Anda bisa mengirimkan sebagian data (*Partial*) saja. Jika Anda mengirim NIK baru, sistem akan otomatis mengenkripsi dan menghash ulang.
 
 *   **URL:** `/api/penduduk/:id`
 *   **Method:** `PUT`
@@ -143,8 +142,7 @@ Digunakan untuk memperbarui data penduduk yang sudah ada (misalnya: pindah RT/RW
   "message": "Data penduduk berhasil diperbarui.",
   "data": {
     "id": "e4a2f8b1-3c9d...",
-    "statusPerkawinan": "Cerai Hidup",
-    // ... sisa data lengkap akan dikembalikan
+    "statusPerkawinan": "Cerai Hidup"
   }
 }
 ```
@@ -152,7 +150,7 @@ Digunakan untuk memperbarui data penduduk yang sudah ada (misalnya: pindah RT/RW
 ---
 
 ## 5. Menghapus Data Penduduk (Delete)
-Digunakan untuk menghapus data penduduk secara permanen dari database (misal: karena pindah kependudukan / administrasi ganda).
+Digunakan untuk menghapus data penduduk secara permanen dari database.
 
 *   **URL:** `/api/penduduk/:id`
 *   **Method:** `DELETE`
@@ -163,13 +161,5 @@ Digunakan untuk menghapus data penduduk secara permanen dari database (misal: ka
 {
   "success": true,
   "message": "Data penduduk berhasil dihapus."
-}
-```
-
-**Response Gagal (404 Not Found):**
-```json
-{
-  "success": false,
-  "message": "Data penduduk tidak ditemukan."
 }
 ```
