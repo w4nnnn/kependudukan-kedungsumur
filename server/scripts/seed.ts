@@ -7,14 +7,16 @@ import "dotenv/config";
 async function seedSuperAdmin() {
   const args = process.argv.slice(2);
   
-  if (args.length < 2) {
+  if (args.length < 3) {
     console.error("❌ GAGAL: Argumen tidak lengkap.");
-    console.error("Cara penggunaan: npm run seed <username> <password>");
-    console.error("Contoh: npm run seed admin_desa sandi_rahasia_123");
+    console.error("Cara penggunaan: npm run seed <name> <username> <password>");
+    console.error("Contoh: npm run seed 'Admin Desa' admin_desa sandi_rahasia_123");
     process.exit(1);
   }
 
-  const [username, password] = args;
+  const name = args[0] as string;
+  const username = args[1] as string;
+  const password = args[2] as string;
   
   console.log(`Mulai membuat Super Admin dengan username: ${username}...`);
 
@@ -23,7 +25,7 @@ async function seedSuperAdmin() {
       body: {
         email: `${username}@kedungsumur.desa.id`,
         password: password,
-        name: "Super Administrator",
+        name: name,
         username: username,
       }
     });
