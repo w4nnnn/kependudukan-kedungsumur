@@ -16,5 +16,8 @@
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"
+  },
+  "scripts": {
+    "seed": "tsx scripts/seed.ts"
   }
 }

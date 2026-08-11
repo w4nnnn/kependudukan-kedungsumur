@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { username } from "better-auth/plugins";
+import { username, admin } from "better-auth/plugins";
 import { db } from "../db/index.js";
 
 export const auth = betterAuth({
@@ -11,6 +11,7 @@ export const auth = betterAuth({
         enabled: true,
     },
     plugins: [
-        username()
+        username(),
+        admin()
     ]
 });
