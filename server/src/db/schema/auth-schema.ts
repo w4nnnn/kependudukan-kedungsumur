@@ -6,8 +6,12 @@ export const user = pgTable("user", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   username: text("username").unique(),
+  displayUsername: text("display_username"),
   emailVerified: boolean("email_verified").default(false).notNull(),
   role: text("role").default("admin").notNull(),
+  banned: boolean("banned").default(false), // Tambahan untuk plugin admin
+  banReason: text("ban_reason"), // Tambahan untuk plugin admin
+  banExpires: timestamp("ban_expires"), // Tambahan untuk plugin admin
   image: text("image"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
@@ -31,6 +35,7 @@ export const session = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    impersonatedBy: text("impersonated_by"), // Tambahan untuk plugin admin
   },
   (table) => [index("session_userId_idx").on(table.userId)],
 );
@@ -93,6 +98,3 @@ export const accountRelations = relations(account, ({ one }) => ({
     references: [user.id],
   }),
 }));
-
-
-
