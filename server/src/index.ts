@@ -1,10 +1,16 @@
 import fastify from "fastify";
+import cors from "@fastify/cors";
 import "dotenv/config";
 import authRoutes from "./routes/auth.routes.js";
 import pendudukRoutes from "./routes/penduduk.routes.js";
 
 const app = fastify({
   logger: true,
+});
+
+app.register(cors, {
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  credentials: true,
 });
 
 app.register(authRoutes);
