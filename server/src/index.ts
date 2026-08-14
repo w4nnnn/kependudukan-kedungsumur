@@ -16,8 +16,10 @@ app.get("/", async (request, reply) => {
 
 const start = async () => {
   try {
-    await app.listen({ port: 3000, host: "0.0.0.0" });
-    console.log("🚀 Server API berjalan di http://localhost:3000");
+    const port = parseInt(process.env.PORT || "3000", 10);
+    
+    await app.listen({ port, host: "0.0.0.0" });
+    console.log(`🚀 Server API berjalan di http://localhost:${port}`);
   } catch (err) {
     app.log.error(err);
     process.exit(1);
