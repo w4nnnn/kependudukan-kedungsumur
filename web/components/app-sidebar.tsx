@@ -20,6 +20,7 @@ import {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
   const router = useRouter()
+  const { data: session } = authClient.useSession()
   
   const handleLogout = async () => {
     await authClient.signOut()
@@ -72,7 +73,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="p-4">
+      <SidebarFooter className="p-4 gap-4 flex-col">
+        {session?.user && (
+          <div className="flex flex-col gap-1 px-2 py-1.5 opacity-80 group-data-[collapsible=icon]:hidden">
+            <span className="text-xs font-medium text-muted-foreground">Masuk sebagai:</span>
+            <span className="text-sm font-semibold truncate text-foreground">{session.user.name}</span>
+          </div>
+        )}
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton 
