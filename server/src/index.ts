@@ -5,7 +5,15 @@ import authRoutes from "./routes/auth.routes.js";
 import pendudukRoutes from "./routes/penduduk.routes.js";
 
 const app = fastify({
-  logger: true,
+  logger: {
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        translateTime: 'SYS:HH:MM:ss',
+        ignore: 'pid,hostname',
+      },
+    },
+  },
 });
 
 app.register(cors, {
