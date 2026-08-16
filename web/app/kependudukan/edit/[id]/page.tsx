@@ -84,7 +84,13 @@ export default function EditPendudukPage({ params }: { params: Promise<{ id: str
             if (data.tanggalLahir) {
               data.tanggalLahir = new Date(data.tanggalLahir);
             }
-            reset(data);
+            
+            const safeData = {
+              ...data,
+              pekerjaan: data.pekerjaan || "",
+            };
+            
+            reset(safeData);
           } else {
             toast.error("Gagal memuat data penduduk");
             router.push("/kependudukan");
