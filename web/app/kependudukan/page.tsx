@@ -3,10 +3,6 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, Search, Plus, MoreHorizontal, Pencil, Trash } from "lucide-react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { toast } from "sonner"
 
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
@@ -28,35 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-} from "@/components/ui/dialog"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
 
-const formSchema = z.object({
-  nik: z.string().length(16, "NIK harus 16 digit"),
-  noKk: z.string().length(16, "No KK harus 16 digit"),
-  namaLengkap: z.string().min(3, "Nama lengkap minimal 3 karakter"),
-  tempatLahir: z.string().min(3, "Tempat lahir wajib diisi"),
-  tanggalLahir: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal harus YYYY-MM-DD"),
-  jenisKelamin: z.enum(["Laki-laki", "Perempuan"]),
-  alamat: z.string().min(5, "Alamat wajib diisi"),
-  rt: z.string().min(1, "RT wajib diisi"),
-  rw: z.string().min(1, "RW wajib diisi"),
-  agama: z.string().min(2, "Agama wajib diisi"),
-  statusPerkawinan: z.string().min(2, "Status perkawinan wajib diisi"),
-  pekerjaan: z.string().min(2, "Pekerjaan wajib diisi"),
-})
-
-type PendudukFormValues = z.infer<typeof formSchema>
-
-// Tipe data berdasarkan dokumentasi API
 interface Penduduk {
   id: string
   nik: string
@@ -73,33 +41,14 @@ interface Penduduk {
   pekerjaan: string
 }
 
-export default function DashboardPage() {
+export default function KependudukanPage() {
   const router = useRouter()
   const [dataPenduduk, setDataPenduduk] = useState<Penduduk[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
   
   const { useSession } = authClient;
   const { data: session, isPending: isSessionPending } = useSession()
-
-  const form = useForm<PendudukFormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      nik: "",
-      noKk: "",
-      namaLengkap: "",
-      tempatLahir: "",
-      tanggalLahir: "",
-      jenisKelamin: "Laki-laki",
-      alamat: "",
-      rt: "",
-      rw: "",
-      agama: "",
-      statusPerkawinan: "",
-      pekerjaan: "",
-    },
-  })
 
   useEffect(() => {
     // Jika selesai loading sesi dan tidak ada session, lempar ke login
@@ -158,35 +107,6 @@ export default function DashboardPage() {
     return () => clearTimeout(delayDebounceFn)
   }, [searchQuery, session])
 
-  const onSubmit = async (values: PendudukFormValues) => {
-    setIsSubmitting(true)
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/penduduk`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(values),
-      })
-      
-      const json = await res.json()
-      
-      if (res.ok && json.success) {
-        toast.success("Berhasil menambahkan data penduduk baru")
-        form.reset()
-        fetchPenduduk(searchQuery)
-      } else {
-        toast.error(json.message || "Gagal menambahkan data penduduk")
-      }
-    } catch (error) {
-      console.error(error)
-      toast.error("Terjadi kesalahan sistem")
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
   // Jika masih memeriksa sesi, tampilkan loading full-screen
   if (isSessionPending) {
     return (
@@ -214,14 +134,16 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
-        </div>
 
         {/* Card Tabel */}
-        <Card className="glass-dark border-border/20 overflow-hidden">
-          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-border/10">
-            <CardTitle className="text-xl font-medium tracking-wide">Daftar Penduduk</CardTitle>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="relative group">
+        <Card className="border-white/10 bg-black/20 backdrop-blur-md shadow-2xl overflow-hidden rounded-2xl">
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-white/5 bg-white/5">
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5 text-primary" />
+              <span>Daftar Penduduk</span>
+            </CardTitle>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center w-full sm:w-auto">
+              <div className="relative group w-full sm:w-auto">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input
                   type="search"
