@@ -51,13 +51,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton 
               render={
-                <a href="/dashboard">
-                  <LayoutDashboard />
-                  <span>Dashboard</span>
+                <a href="/kependudukan">
+                  <Users />
+                  <span>Kependudukan</span>
                 </a>
               }
-              isActive={pathname === "/dashboard"}
-              tooltip="Dashboard"
+              isActive={pathname.startsWith("/kependudukan")}
+              tooltip="Data Kependudukan"
             />
           </SidebarMenuItem>
           <SidebarMenuItem>
@@ -68,7 +68,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <span>Pengaturan</span>
                 </a>
               }
-              isActive={pathname === "/dashboard/settings"}
+              isActive={pathname === "/settings"}
               tooltip="Pengaturan"
             />
           </SidebarMenuItem>

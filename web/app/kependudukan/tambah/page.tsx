@@ -90,7 +90,7 @@ export default function TambahPendudukPage() {
         toast.success("Berhasil", {
           description: "Data penduduk berhasil ditambahkan.",
         })
-        router.push("/dashboard")
+        router.push("/kependudukan")
       } else {
         toast.error("Gagal Menyimpan", {
           description: result.message || "Terjadi kesalahan pada server.",
@@ -111,7 +111,7 @@ export default function TambahPendudukPage() {
       <div className="mx-auto w-full max-w-4xl space-y-6">
         
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={() => router.push("/dashboard")}>
+          <Button variant="outline" size="icon" onClick={() => router.push("/kependudukan")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>

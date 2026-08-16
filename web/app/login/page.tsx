@@ -54,8 +54,7 @@ export default function LoginPage() {
         // Asumsi error.message atau sejenisnya dikembalikan
         setErrorMsg(res.error.message || "Gagal login. Periksa username dan password Anda.")
       } else {
-        // Redirect ke dashboard (sesuaikan dengan rute Anda)
-        router.push("/dashboard") 
+        router.push("/kependudukan") 
       }
     } catch (error) {
       console.error("Login catch error:", error);

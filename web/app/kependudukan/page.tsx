@@ -210,9 +210,10 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Data Kependudukan</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Kelola data penduduk Desa Kedungsumur.
+              Kelola data penduduk Desa Kedungsumur. Selamat datang, {session.user.name}.
             </p>
           </div>
+        </div>
         </div>
 
         {/* Card Tabel */}
@@ -231,7 +232,7 @@ export default function DashboardPage() {
                 />
               </div>
               <Button 
-                onClick={() => router.push("/dashboard/tambah")}
+                onClick={() => router.push("/kependudukan/tambah")}
                 className="gap-2 font-medium bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
               >
                 <Plus className="h-4 w-4" />
