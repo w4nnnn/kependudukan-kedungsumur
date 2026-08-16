@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, Search, Plus, MoreHorizontal, Pencil, Trash } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { toast } from "sonner"
 
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
@@ -24,6 +28,39 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+
+const formSchema = z.object({
+  nik: z.string().length(16, "NIK harus 16 digit"),
+  noKk: z.string().length(16, "No KK harus 16 digit"),
+  namaLengkap: z.string().min(3, "Nama lengkap minimal 3 karakter"),
+  tempatLahir: z.string().min(3, "Tempat lahir wajib diisi"),
+  tanggalLahir: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal harus YYYY-MM-DD"),
+  jenisKelamin: z.enum(["Laki-laki", "Perempuan"]),
+  alamat: z.string().min(5, "Alamat wajib diisi"),
+  rt: z.string().min(1, "RT wajib diisi"),
+  rw: z.string().min(1, "RW wajib diisi"),
+  agama: z.string().min(2, "Agama wajib diisi"),
+  statusPerkawinan: z.string().min(2, "Status perkawinan wajib diisi"),
+  pekerjaan: z.string().min(2, "Pekerjaan wajib diisi"),
+})
+
+type PendudukFormValues = z.infer<typeof formSchema>
 
 // Tipe data berdasarkan dokumentasi API
 interface Penduduk {
@@ -47,9 +84,29 @@ export default function DashboardPage() {
   const [dataPenduduk, setDataPenduduk] = useState<Penduduk[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   
   const { useSession } = authClient;
   const { data: session, isPending: isSessionPending } = useSession()
+
+  const form = useForm<PendudukFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      nik: "",
+      noKk: "",
+      namaLengkap: "",
+      tempatLahir: "",
+      tanggalLahir: "",
+      jenisKelamin: "Laki-laki",
+      alamat: "",
+      rt: "",
+      rw: "",
+      agama: "",
+      statusPerkawinan: "",
+      pekerjaan: "",
+    },
+  })
 
   useEffect(() => {
     // Jika selesai loading sesi dan tidak ada session, lempar ke login
@@ -105,6 +162,36 @@ export default function DashboardPage() {
     return () => clearTimeout(delayDebounceFn)
   }, [searchQuery, session])
 
+  const onSubmit = async (values: PendudukFormValues) => {
+    setIsSubmitting(true)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/penduduk`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(values),
+      })
+      
+      const json = await res.json()
+      
+      if (res.ok && json.success) {
+        toast.success("Berhasil menambahkan data penduduk baru")
+        setIsAddModalOpen(false)
+        form.reset()
+        fetchPenduduk(searchQuery)
+      } else {
+        toast.error(json.message || "Gagal menambahkan data penduduk")
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error("Terjadi kesalahan sistem")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   // Handle Logout
   const handleLogout = async () => {
     await authClient.signOut()
@@ -155,7 +242,10 @@ export default function DashboardPage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Button className="gap-2 font-medium bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
+              <Button 
+                onClick={() => setIsAddModalOpen(true)}
+                className="gap-2 font-medium bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
+              >
                 <Plus className="h-4 w-4" />
                 Tambah Data
               </Button>
@@ -176,7 +266,7 @@ export default function DashboardPage() {
                 <p className="text-sm mt-1">Coba gunakan kata kunci pencarian yang lain.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto mx-2">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border/10 hover:bg-transparent bg-black/10">
@@ -230,6 +320,232 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+        <DialogContent className="sm:max-w-[600px] bg-popover/95 backdrop-blur-xl border-white/10 shadow-2xl overflow-y-auto max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Tambah Data Penduduk</DialogTitle>
+            <DialogDescription>
+              Masukkan informasi penduduk baru. Pastikan NIK dan No KK valid (16 digit).
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="nik"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>NIK</FormLabel>
+                      <FormControl>
+                        <Input placeholder="16 digit NIK" maxLength={16} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="noKk"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>No Kartu Keluarga</FormLabel>
+                      <FormControl>
+                        <Input placeholder="16 digit No KK" maxLength={16} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="namaLengkap"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nama Lengkap</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Sesuai KTP" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="tempatLahir"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tempat Lahir</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Kota/Kab" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="tanggalLahir"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tanggal Lahir</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="jenisKelamin"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Jenis Kelamin</FormLabel>
+                    <div className="flex items-center gap-4 pt-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          value="Laki-laki"
+                          checked={field.value === "Laki-laki"}
+                          onChange={field.onChange}
+                          className="h-4 w-4 accent-primary"
+                        />
+                        <span className="text-sm">Laki-laki</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          value="Perempuan"
+                          checked={field.value === "Perempuan"}
+                          onChange={field.onChange}
+                          className="h-4 w-4 accent-primary"
+                        />
+                        <span className="text-sm">Perempuan</span>
+                      </label>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="alamat"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Alamat Lengkap</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Jl. Raya / Nama Jalan..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="rt"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>RT</FormLabel>
+                      <FormControl>
+                        <Input placeholder="001" maxLength={3} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="rw"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>RW</FormLabel>
+                      <FormControl>
+                        <Input placeholder="002" maxLength={3} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="agama"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Agama</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Islam/Kristen..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="statusPerkawinan"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status Perkawinan</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Kawin/Belum..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="pekerjaan"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Pekerjaan</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Petani/Wiraswasta..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <DialogFooter className="pt-6">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsAddModalOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  Batal
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : (
+                    "Simpan Penduduk"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
