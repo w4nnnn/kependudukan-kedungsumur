@@ -13,12 +13,11 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
 
   fastify.get("/api/penduduk", async (request, reply) => {
     try {
-      const limitNum = Number(limit) || 10;
-      const pageNum = Number(page) || 1;
-      const offset = (pageNum - 1) * limitNum;
+      const { search, nik, nokk, limit = 100, page = 1 } = request.query as any;
+      const offset = (Number(page) - 1) * Number(limit);
 
       let query = db.select().from(pendudukTable).$dynamic();
-      let countQuery = db.select({ count: sql`count(*)` }).from(pendudukTable).$dynamic();
+      let countQuery = db.select({ count: sql<number>`cast(count(${pendudukTable.id}) as integer)` }).from(pendudukTable).$dynamic();
 
       const conditions = [];
 
@@ -35,24 +34,27 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
       }
 
       if (conditions.length > 0) {
-        const whereClause = and(...conditions);
-        query = query.where(whereClause);
-        countQuery = countQuery.where(whereClause);
+        const whereCondition = and(...conditions);
+        query = query.where(whereCondition);
+        countQuery = countQuery.where(whereCondition);
       }
 
-      const [data, [{ count }]] = await Promise.all([
-        query.limit(limitNum).offset(offset),
+      const [data, totalCount] = await Promise.all([
+        query.limit(Number(limit)).offset(offset),
         countQuery
       ]);
+
+      const total = totalCount[0].count;
+      const totalPages = Math.ceil(total / Number(limit));
 
       return reply.send({ 
         success: true, 
         data,
         meta: {
-          total: Number(count),
-          page: pageNum,
-          limit: limitNum,
-          totalPages: Math.ceil(Number(count) / limitNum)
+          total,
+          page: Number(page),
+          limit: Number(limit),
+          totalPages
         }
       });
     } catch (error) {

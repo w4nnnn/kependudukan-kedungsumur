@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, Search, Plus, MoreHorizontal, Pencil, Trash, AlertTriangle } from "lucide-react"
+import { Loader2, Search, Plus, MoreHorizontal, Pencil, Trash, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react"
 
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
@@ -34,15 +34,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-  PaginationEllipsis,
-} from "@/components/ui/pagination"
 import { toast } from "sonner"
 
 interface Penduduk {
@@ -64,34 +55,32 @@ interface Penduduk {
 export default function KependudukanPage() {
   const router = useRouter()
   const [dataPenduduk, setDataPenduduk] = useState<Penduduk[]>([])
-  const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 })
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalData, setTotalData] = useState(0)
+  const limit = 10
   const [deleteData, setDeleteData] = useState<{ id: string, name: string } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   
   const { useSession } = authClient;
   const { data: session, isPending: isSessionPending } = useSession()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   useEffect(() => {
     // Jika selesai loading sesi dan tidak ada session, lempar ke login
-    if (mounted && !isSessionPending && !session) {
+    if (!isSessionPending && !session) {
       router.push("/login")
     }
-  }, [session, isSessionPending, router, mounted])
+  }, [session, isSessionPending, router])
 
   // Fetch Data Penduduk
   const fetchPenduduk = async (search = "", page = 1) => {
     setIsLoading(true)
     try {
-      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk`)
+      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/api/penduduk`)
       url.searchParams.append("page", page.toString())
-      url.searchParams.append("limit", "10")
+      url.searchParams.append("limit", limit.toString())
 
       if (search) {
         if (/^\d{16}$/.test(search)) {
@@ -101,6 +90,7 @@ export default function KependudukanPage() {
         }
       }
       
+      // Kita butuh kredensial (cookie) untuk dikirim ke API Fastify
       const res = await fetch(url.toString(), {
         credentials: "include", 
       })
@@ -111,10 +101,14 @@ export default function KependudukanPage() {
           const json = JSON.parse(text)
           if (json.success) {
             setDataPenduduk(json.data)
-            if (json.meta) setMeta(json.meta)
+            if (json.meta) {
+              setTotalPages(json.meta.totalPages)
+              setTotalData(json.meta.total)
+            }
           }
         }
       } else if (res.status === 401 || res.status === 403) {
+        // Jika API menolak karena sesi tidak valid
         router.push("/login")
       }
     } catch (error) {
@@ -126,17 +120,16 @@ export default function KependudukanPage() {
 
   // Load data awal
   useEffect(() => {
-    // Hanya fetch data jika pengguna sudah dipastikan login
     if (session) {
-      fetchPenduduk()
+      fetchPenduduk(searchQuery, currentPage)
     }
-  }, [session])
+  }, [session, currentPage])
 
-  // Handle pencarian (debounce sederhana)
   useEffect(() => {
     if (!session) return
     const delayDebounceFn = setTimeout(() => {
-      fetchPenduduk(searchQuery)
+      setCurrentPage(1)
+      fetchPenduduk(searchQuery, 1)
     }, 500)
     return () => clearTimeout(delayDebounceFn)
   }, [searchQuery, session])
@@ -157,7 +150,7 @@ export default function KependudukanPage() {
         toast.success("Berhasil", {
           description: `Data ${deleteData.name} telah dihapus.`,
         })
-        fetchPenduduk(searchQuery)
+        fetchPenduduk(searchQuery, currentPage)
       } else {
         toast.error("Gagal menghapus data", {
           description: result.message || "Terjadi kesalahan sistem.",
@@ -173,9 +166,10 @@ export default function KependudukanPage() {
     }
   }
 
-  if (!mounted || isSessionPending) {
+  // Jika masih memeriksa sesi, tampilkan loading full-screen
+  if (isSessionPending) {
     return (
-      <div className="flex h-full min-h-[50vh] items-center justify-center p-24">
+      <div className="flex h-full items-center justify-center p-24">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
@@ -241,7 +235,7 @@ export default function KependudukanPage() {
                 <p className="text-sm mt-1">Coba gunakan kata kunci pencarian yang lain.</p>
               </div>
             ) : (
-              <div className="flex flex-col w-full">
+              <div className="flex flex-col">
                 <div className="overflow-x-auto mx-2">
                   <Table>
                     <TableHeader>
@@ -293,68 +287,39 @@ export default function KependudukanPage() {
                   </Table>
                 </div>
                 
-                {meta.totalPages > 1 && (
-                  <div className="border-t p-4 mt-auto">
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious 
-                            href="#" 
-                            onClick={(e) => {
-                              e.preventDefault();
-                              if (meta.page > 1) fetchPenduduk(searchQuery, meta.page - 1);
-                            }}
-                            className={meta.page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                        
-                        {Array.from({ length: meta.totalPages }).map((_, i) => {
-                          const pageNumber = i + 1;
-                          
-                          if (
-                            meta.totalPages > 5 && 
-                            pageNumber !== 1 && 
-                            pageNumber !== meta.totalPages && 
-                            Math.abs(pageNumber - meta.page) > 1
-                          ) {
-                            if (pageNumber === 2 || pageNumber === meta.totalPages - 1) {
-                              return (
-                                <PaginationItem key={`ellipsis-${pageNumber}`}>
-                                  <PaginationEllipsis />
-                                </PaginationItem>
-                              )
-                            }
-                            return null;
-                          }
-                          
-                          return (
-                            <PaginationItem key={pageNumber}>
-                              <PaginationLink
-                                href="#"
-                                isActive={meta.page === pageNumber}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  fetchPenduduk(searchQuery, pageNumber);
-                                }}
-                              >
-                                {pageNumber}
-                              </PaginationLink>
-                            </PaginationItem>
-                          )
-                        })}
-
-                        <PaginationItem>
-                          <PaginationNext 
-                            href="#" 
-                            onClick={(e) => {
-                              e.preventDefault();
-                              if (meta.page < meta.totalPages) fetchPenduduk(searchQuery, meta.page + 1);
-                            }}
-                            className={meta.page >= meta.totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between px-4 py-4 border-t">
+                    <div className="text-sm text-muted-foreground">
+                      Menampilkan <span className="font-medium">{dataPenduduk.length}</span> dari <span className="font-medium">{totalData}</span> data
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1 || isLoading}
+                        className="h-8 gap-1 px-2.5"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        <span>Sebelumnya</span>
+                      </Button>
+                      <div className="flex items-center gap-1 text-sm font-medium">
+                        <span className="w-8 text-center">{currentPage}</span>
+                        <span className="text-muted-foreground">/</span>
+                        <span className="w-8 text-center">{totalPages}</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages || isLoading}
+                        className="h-8 gap-1 px-2.5"
+                      >
+                        <span>Selanjutnya</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
