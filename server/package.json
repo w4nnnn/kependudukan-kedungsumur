@@ -23,7 +23,8 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc",
-    "seed": "tsx scripts/seed.ts",
-    "generate:keys": "node scripts/generate-keys.js"
+    "create-admin": "tsx scripts/create-admin.ts",
+    "generate:keys": "node scripts/generate-keys.js",
+    "seed:penduduk": "tsx scripts/seed-penduduk.ts"
   }
 }
