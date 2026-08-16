@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, Search, Plus, MoreHorizontal, Pencil, Trash } from "lucide-react"
+import { Loader2, Search, Plus, MoreHorizontal, Pencil, Trash, AlertTriangle } from "lucide-react"
 
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
@@ -23,7 +23,18 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { toast } from "sonner"
 
 interface Penduduk {
   id: string
@@ -46,6 +57,8 @@ export default function KependudukanPage() {
   const [dataPenduduk, setDataPenduduk] = useState<Penduduk[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [deleteData, setDeleteData] = useState<{ id: string, name: string } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   
   const { useSession } = authClient;
   const { data: session, isPending: isSessionPending } = useSession()
@@ -106,6 +119,38 @@ export default function KependudukanPage() {
     }, 500)
     return () => clearTimeout(delayDebounceFn)
   }, [searchQuery, session])
+
+  const handleDelete = async () => {
+    if (!deleteData) return
+    
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk/${deleteData.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      })
+
+      const result = await res.json()
+
+      if (res.ok && result.success) {
+        toast.success("Berhasil", {
+          description: `Data ${deleteData.name} telah dihapus.`,
+        })
+        fetchPenduduk(searchQuery)
+      } else {
+        toast.error("Gagal menghapus data", {
+          description: result.message || "Terjadi kesalahan sistem.",
+        })
+      }
+    } catch (error) {
+      toast.error("Kesalahan jaringan", {
+        description: "Gagal terhubung ke server.",
+      })
+    } finally {
+      setIsDeleting(false)
+      setDeleteData(null)
+    }
+  }
 
   // Jika masih memeriksa sesi, tampilkan loading full-screen
   if (isSessionPending) {
@@ -214,7 +259,7 @@ export default function KependudukanPage() {
                                 <DropdownMenuItem className="cursor-pointer" onClick={() => router.push(`/kependudukan/edit/${penduduk.id}`)}>
                                   <Pencil className="mr-2 h-4 w-4" /> Edit
                                 </DropdownMenuItem>
-                                <DropdownMenuItem variant="destructive" className="cursor-pointer">
+                                <DropdownMenuItem variant="destructive" className="cursor-pointer" onClick={() => setDeleteData({ id: penduduk.id, name: penduduk.namaLengkap })}>
                                   <Trash className="mr-2 h-4 w-4" /> Hapus
                                 </DropdownMenuItem>
                               </DropdownMenuGroup>
@@ -230,6 +275,38 @@ export default function KependudukanPage() {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={!!deleteData} onOpenChange={(open) => !open && setDeleteData(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" /> Konfirmasi Penghapusan
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus data kependudukan atas nama <strong>{deleteData?.name}</strong>? Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault()
+                handleDelete()
+              }} 
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Menghapus...
+                </>
+              ) : (
+                "Hapus Permanen"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
