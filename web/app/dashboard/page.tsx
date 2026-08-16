@@ -126,87 +126,95 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40 p-4 md:p-8">
+    <div className="flex min-h-screen w-full flex-col p-4 md:p-8">
       <div className="mx-auto w-full max-w-6xl space-y-6">
         
         {/* Header Dashboard */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between glass p-6 rounded-2xl">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Data Kependudukan</h1>
-            <p className="text-muted-foreground text-sm">
-              Kelola data penduduk Desa Kedungsumur. Selamat datang, {session.user.name}.
+            <p className="text-muted-foreground text-sm mt-1">
+              Kelola data penduduk Desa Kedungsumur. Selamat datang, <span className="font-semibold text-foreground">{session.user.name}</span>.
             </p>
           </div>
-          <Button variant="outline" onClick={handleLogout}>Keluar</Button>
+          <Button variant="outline" onClick={handleLogout} className="glass-dark border-border/40 hover:bg-white/10">Keluar</Button>
         </div>
 
         {/* Card Tabel */}
-        <Card>
-          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2">
-            <CardTitle>Daftar Penduduk</CardTitle>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Card className="glass-dark border-border/20 overflow-hidden">
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-border/10 bg-black/20">
+            <CardTitle className="text-xl font-medium tracking-wide">Daftar Penduduk</CardTitle>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input
                   type="search"
                   placeholder="Cari nama penduduk..."
-                  className="w-full pl-8 sm:w-64"
+                  className="w-full pl-9 sm:w-72 bg-black/20 border-white/10 focus:border-primary/50 focus:bg-black/40 transition-all rounded-lg"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Button size="sm" className="h-9 gap-1">
+              <Button className="gap-2 font-medium bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
                 <Plus className="h-4 w-4" />
                 Tambah Data
               </Button>
             </div>
           </CardHeader>
           
-          <CardContent>
+          <CardContent className="p-0">
             {isLoading ? (
-              <div className="flex justify-center p-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <div className="flex justify-center p-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : dataPenduduk.length === 0 ? (
-              <div className="flex justify-center p-8 text-sm text-muted-foreground">
-                Tidak ada data penduduk yang ditemukan.
+              <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
+                <div className="h-16 w-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                  <Search className="h-6 w-6 opacity-50" />
+                </div>
+                <p className="font-medium text-foreground">Tidak ada data ditemukan</p>
+                <p className="text-sm mt-1">Coba gunakan kata kunci pencarian yang lain.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-md border">
+              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>NIK</TableHead>
-                      <TableHead>Nama Lengkap</TableHead>
-                      <TableHead>Jenis Kelamin</TableHead>
-                      <TableHead>Alamat</TableHead>
-                      <TableHead>Pekerjaan</TableHead>
-                      <TableHead className="w-[80px]"></TableHead>
+                    <TableRow className="border-border/10 hover:bg-transparent bg-black/10">
+                      <TableHead className="font-medium text-muted-foreground h-12">NIK</TableHead>
+                      <TableHead className="font-medium text-muted-foreground h-12">Nama Lengkap</TableHead>
+                      <TableHead className="font-medium text-muted-foreground h-12">Jenis Kelamin</TableHead>
+                      <TableHead className="font-medium text-muted-foreground h-12">Alamat</TableHead>
+                      <TableHead className="font-medium text-muted-foreground h-12">Pekerjaan</TableHead>
+                      <TableHead className="w-[80px] h-12"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {dataPenduduk.map((penduduk) => (
-                      <TableRow key={penduduk.id}>
-                        <TableCell className="font-medium">{penduduk.nik}</TableCell>
-                        <TableCell>{penduduk.namaLengkap}</TableCell>
-                        <TableCell>{penduduk.jenisKelamin}</TableCell>
+                      <TableRow key={penduduk.id} className="border-border/10 hover:bg-white/5 transition-colors">
+                        <TableCell className="font-mono text-sm">{penduduk.nik}</TableCell>
+                        <TableCell className="font-medium">{penduduk.namaLengkap}</TableCell>
                         <TableCell>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10">
+                            {penduduk.jenisKelamin}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-sm">
                           {penduduk.alamat}, RT {penduduk.rt}/RW {penduduk.rw}
                         </TableCell>
-                        <TableCell>{penduduk.pekerjaan}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{penduduk.pekerjaan}</TableCell>
                         <TableCell>
                           <DropdownMenu>
-                            <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring">
                               <span className="sr-only">Buka menu</span>
                               <MoreHorizontal className="h-4 w-4" />
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" className="bg-popover/90 backdrop-blur-xl border-white/10 shadow-xl">
                               <DropdownMenuGroup>
-                                <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                                <DropdownMenuItem>
+                                <DropdownMenuLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Aksi</DropdownMenuLabel>
+                                <DropdownMenuItem className="focus:bg-white/10 cursor-pointer">
                                   <Pencil className="mr-2 h-4 w-4" /> Edit
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">
+                                <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer">
                                   <Trash className="mr-2 h-4 w-4" /> Hapus
                                 </DropdownMenuItem>
                               </DropdownMenuGroup>
