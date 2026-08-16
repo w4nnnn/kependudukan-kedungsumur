@@ -235,7 +235,7 @@ export default function KependudukanPage() {
                   </TableHeader>
                   <TableBody>
                     {dataPenduduk.map((penduduk) => (
-                      <TableRow key={penduduk.id}>
+                      <TableRow key={penduduk.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/kependudukan/${penduduk.id}`)}>
                         <TableCell className="font-mono text-sm">{penduduk.nik}</TableCell>
                         <TableCell className="font-medium">{penduduk.namaLengkap}</TableCell>
                         <TableCell>
@@ -247,7 +247,7 @@ export default function KependudukanPage() {
                           {penduduk.alamat}, RT {penduduk.rt}/RW {penduduk.rw}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{penduduk.pekerjaan}</TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring">
                               <span className="sr-only">Buka menu</span>
