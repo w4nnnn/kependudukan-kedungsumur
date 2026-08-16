@@ -5,9 +5,13 @@ import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Loader2, ArrowLeft, Save } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, ArrowLeft, Save } from "lucide-react"
+import { format } from "date-fns"
 
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -19,7 +23,9 @@ const formSchema = z.object({
   noKk: z.string().length(16, "No KK harus tepat 16 digit"),
   namaLengkap: z.string().min(3, "Nama Lengkap minimal 3 karakter"),
   tempatLahir: z.string().min(3, "Tempat Lahir minimal 3 karakter"),
-  tanggalLahir: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal harus YYYY-MM-DD"),
+  tanggalLahir: z.date({
+    required_error: "Pilih tanggal lahir",
+  }),
   jenisKelamin: z.enum(["Laki-laki", "Perempuan"], { required_error: "Pilih jenis kelamin" }),
   alamat: z.string().min(5, "Alamat minimal 5 karakter"),
   rt: z.string().length(3, "RT harus 3 digit (contoh: 001)"),
@@ -48,7 +54,6 @@ export default function TambahPendudukPage() {
       noKk: "",
       namaLengkap: "",
       tempatLahir: "",
-      tanggalLahir: "",
       jenisKelamin: undefined,
       alamat: "",
       rt: "",
@@ -64,13 +69,19 @@ export default function TambahPendudukPage() {
 
     try {
       const url = `${process.env.NEXT_PUBLIC_API_URL}/api/penduduk`
+      
+      const formattedData = {
+        ...data,
+        tanggalLahir: format(data.tanggalLahir, "yyyy-MM-dd"),
+      }
+
       const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include", // Penting untuk otentikasi
-        body: JSON.stringify(data),
+        credentials: "include", 
+        body: JSON.stringify(formattedData),
       })
 
       const result = await response.json()
@@ -147,9 +158,24 @@ export default function TambahPendudukPage() {
                   {errors.tempatLahir && <p className="text-sm text-destructive">{errors.tempatLahir.message}</p>}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 flex flex-col pt-2">
                   <label className="text-sm font-medium">Tanggal Lahir</label>
-                  <Input type="date" {...register("tanggalLahir")} />
+                  <Popover>
+                    <PopoverTrigger className={cn(
+                        "w-full justify-start text-left font-normal inline-flex items-center rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+                        !watch("tanggalLahir") && "text-muted-foreground"
+                      )}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {watch("tanggalLahir") ? format(watch("tanggalLahir"), "PPP") : <span>Pilih tanggal</span>}
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={watch("tanggalLahir") as Date}
+                        onSelect={(date) => setValue("tanggalLahir", date as Date)}
+                      />
+                    </PopoverContent>
+                  </Popover>
                   {errors.tanggalLahir && <p className="text-sm text-destructive">{errors.tanggalLahir.message}</p>}
                 </div>
 
