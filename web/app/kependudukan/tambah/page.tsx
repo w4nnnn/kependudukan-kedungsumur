@@ -107,7 +107,7 @@ export default function TambahPendudukPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40 p-4 md:p-8">
+    <div className="flex min-h-screen w-full flex-col p-4 md:p-8">
       <div className="mx-auto w-full max-w-4xl space-y-6">
         
         <div className="flex items-center gap-4">

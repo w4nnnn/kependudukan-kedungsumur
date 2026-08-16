@@ -157,7 +157,7 @@ export default function KependudukanPage() {
                 className="gap-2 font-medium shadow-sm"
               >
                 <Plus className="h-4 w-4" />
-                Tambah Data
+                Tambah Penduduk
               </Button>
             </div>
           </CardHeader>
@@ -214,7 +214,7 @@ export default function KependudukanPage() {
                                 <DropdownMenuItem className="cursor-pointer">
                                   <Pencil className="mr-2 h-4 w-4" /> Edit
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer">
+                                <DropdownMenuItem variant="destructive" className="cursor-pointer">
                                   <Trash className="mr-2 h-4 w-4" /> Hapus
                                 </DropdownMenuItem>
                               </DropdownMenuGroup>
