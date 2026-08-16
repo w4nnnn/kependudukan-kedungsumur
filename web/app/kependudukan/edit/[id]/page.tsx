@@ -240,7 +240,7 @@ export default function EditPendudukPage() {
                 {/* Jenis Kelamin */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Jenis Kelamin</label>
-                  <Select onValueChange={(v) => setValue("jenisKelamin", v as "Laki-laki" | "Perempuan")}>
+                  <Select value={watch("jenisKelamin")} onValueChange={(v) => setValue("jenisKelamin", v as "Laki-laki" | "Perempuan")}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih Jenis Kelamin" />
                     </SelectTrigger>
@@ -265,7 +265,7 @@ export default function EditPendudukPage() {
                 {/* Agama */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Agama</label>
-                  <Select onValueChange={(v: any) => setValue("agama", v)}>
+                  <Select value={watch("agama")} onValueChange={(v: any) => setValue("agama", v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih Agama" />
                     </SelectTrigger>
@@ -287,7 +287,7 @@ export default function EditPendudukPage() {
                 {/* Status Perkawinan */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Status Perkawinan</label>
-                  <Select onValueChange={(v: any) => setValue("statusPerkawinan", v)}>
+                  <Select value={watch("statusPerkawinan")} onValueChange={(v: any) => setValue("statusPerkawinan", v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih Status" />
                     </SelectTrigger>
