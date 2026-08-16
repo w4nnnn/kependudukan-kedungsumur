@@ -91,14 +91,12 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
       const { id } = request.params;
       const body = request.body;
 
-      const updateData: any = { ...body };
-
-      if (body.nik) updateData.nikHash = hashKependudukan(body.nik as string);
-      if (body.noKk) updateData.noKkHash = hashKependudukan(body.noKk as string);
+      if (body.nik) body.nikHash = hashKependudukan(body.nik);
+      if (body.noKk) body.noKkHash = hashKependudukan(body.noKk);
 
       const updatedData = await db
         .update(pendudukTable)
-        .set(updateData)
+        .set(body)
         .where(eq(pendudukTable.id, id))
         .returning();
 
