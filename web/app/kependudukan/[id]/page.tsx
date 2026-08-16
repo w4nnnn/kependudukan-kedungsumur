@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { Loader2, ArrowLeft, User, MapPin, Calendar, Briefcase, FileText, Activity, Pencil } from "lucide-react"
+import { Loader2, ArrowLeft, User, MapPin, Calendar, Briefcase, FileText, Mosque, Pencil } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -117,7 +117,7 @@ export default function DetailPendudukPage() {
           <Card className="md:col-span-2">
             <CardHeader className="border-b pb-4">
               <div className="flex items-center gap-2">
-                <User className="h-5 w-5 text-primary" />
+                <User className="h-5 w-5" />
                 <CardTitle>Identitas Utama</CardTitle>
               </div>
             </CardHeader>
@@ -141,7 +141,7 @@ export default function DetailPendudukPage() {
           <Card>
             <CardHeader className="border-b pb-4">
               <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
+                <FileText className="h-5 w-5" />
                 <CardTitle>Data Pribadi</CardTitle>
               </div>
             </CardHeader>
@@ -163,7 +163,7 @@ export default function DetailPendudukPage() {
                 </div>
               </div>
               <div className="flex items-start gap-4">
-                <Activity className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                <Mosque className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">Agama</p>
                   <p className="font-medium">{data.agama}</p>
@@ -176,7 +176,7 @@ export default function DetailPendudukPage() {
           <Card>
             <CardHeader className="border-b pb-4">
               <div className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-primary" />
+                <MapPin className="h-5 w-5" />
                 <CardTitle>Domisili & Pekerjaan</CardTitle>
               </div>
             </CardHeader>
