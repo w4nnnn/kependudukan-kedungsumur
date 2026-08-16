@@ -1,0 +1,94 @@
+"use client"
+
+import * as React from "react"
+import { Users, LayoutDashboard, Settings, LogOut } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+
+import { authClient } from "@/lib/auth-client"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  SidebarSeparator,
+} from "@/components/ui/sidebar"
+
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const pathname = usePathname()
+  const router = useRouter()
+  
+  const handleLogout = async () => {
+    await authClient.signOut()
+    router.push("/login")
+  }
+
+  return (
+    <Sidebar collapsible="icon" {...props} className="border-r border-border/10">
+      <SidebarHeader className="py-4">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" className="hover:bg-transparent cursor-default">
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <Users className="size-4" />
+              </div>
+              <div className="flex flex-col gap-0.5 leading-none">
+                <span className="font-semibold">Kependudukan</span>
+                <span className="text-xs text-muted-foreground">Desa Kedungsumur</span>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarSeparator className="bg-border/10" />
+      <SidebarContent className="px-2 py-4">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton 
+              render={
+                <a href="/dashboard">
+                  <LayoutDashboard />
+                  <span>Dashboard</span>
+                </a>
+              }
+              isActive={pathname === "/dashboard"}
+              tooltip="Dashboard"
+            />
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton 
+              render={
+                <a href="#">
+                  <Settings />
+                  <span>Pengaturan</span>
+                </a>
+              }
+              isActive={pathname === "/dashboard/settings"}
+              tooltip="Pengaturan"
+            />
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarContent>
+      <SidebarFooter className="p-4">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton 
+              render={
+                <button onClick={handleLogout}>
+                  <LogOut />
+                  <span>Keluar</span>
+                </button>
+              }
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              tooltip="Keluar"
+            />
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
+  )
+}

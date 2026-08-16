@@ -192,16 +192,10 @@ export default function DashboardPage() {
     }
   }
 
-  // Handle Logout
-  const handleLogout = async () => {
-    await authClient.signOut()
-    router.push("/login")
-  }
-
   // Jika masih memeriksa sesi, tampilkan loading full-screen
   if (isSessionPending) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-full items-center justify-center p-24">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
@@ -213,18 +207,17 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col p-4 md:p-8">
+    <div className="flex w-full flex-col p-4 md:p-8">
       <div className="mx-auto w-full max-w-6xl space-y-6">
         
         {/* Header Dashboard */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between glass p-6 rounded-2xl">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between glass p-6 rounded-2xl mt-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Data Kependudukan</h1>
             <p className="text-muted-foreground text-sm mt-1">
               Kelola data penduduk Desa Kedungsumur. Selamat datang, <span className="font-semibold text-foreground">{session.user.name}</span>.
             </p>
           </div>
-          <Button variant="outline" onClick={handleLogout} className="glass-dark border-border/40 hover:bg-white/10">Keluar</Button>
         </div>
 
         {/* Card Tabel */}
