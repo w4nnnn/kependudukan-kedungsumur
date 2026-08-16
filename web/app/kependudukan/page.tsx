@@ -126,7 +126,7 @@ export default function KependudukanPage() {
       <div className="mx-auto w-full max-w-6xl space-y-6">
         
         {/* Header Dashboard */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between glass p-6 rounded-2xl mt-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-6 rounded-2xl mt-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Data Kependudukan</h1>
             <p className="text-muted-foreground text-sm mt-1">
@@ -136,26 +136,25 @@ export default function KependudukanPage() {
         </div>
 
         {/* Card Tabel */}
-        <Card className="border-white/10 bg-black/20 backdrop-blur-md shadow-2xl overflow-hidden rounded-2xl">
-          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-white/5 bg-white/5">
+        <Card className="shadow-sm overflow-hidden">
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-4 border-b">
             <CardTitle className="flex items-center gap-2">
-              <Search className="h-5 w-5 text-primary" />
               <span>Daftar Penduduk</span>
             </CardTitle>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center w-full sm:w-auto">
               <div className="relative group w-full sm:w-auto">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors" />
                 <Input
                   type="search"
                   placeholder="Cari nama penduduk..."
-                  className="w-full pl-9 sm:w-72 bg-black/20 border-white/10 focus:border-primary/50 focus:bg-black/40 transition-all rounded-lg"
+                  className="w-full pl-9 sm:w-72 transition-all rounded-lg"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
               <Button 
                 onClick={() => router.push("/kependudukan/tambah")}
-                className="gap-2 font-medium bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
+                className="gap-2 font-medium shadow-sm"
               >
                 <Plus className="h-4 w-4" />
                 Tambah Data
@@ -180,22 +179,22 @@ export default function KependudukanPage() {
               <div className="overflow-x-auto mx-2">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-border/10 hover:bg-transparent bg-black/10">
-                      <TableHead className="font-medium text-muted-foreground h-12">NIK</TableHead>
-                      <TableHead className="font-medium text-muted-foreground h-12">Nama Lengkap</TableHead>
-                      <TableHead className="font-medium text-muted-foreground h-12">Jenis Kelamin</TableHead>
-                      <TableHead className="font-medium text-muted-foreground h-12">Alamat</TableHead>
-                      <TableHead className="font-medium text-muted-foreground h-12">Pekerjaan</TableHead>
+                    <TableRow>
+                      <TableHead className="font-medium h-12">NIK</TableHead>
+                      <TableHead className="font-medium h-12">Nama Lengkap</TableHead>
+                      <TableHead className="font-medium h-12">Jenis Kelamin</TableHead>
+                      <TableHead className="font-medium h-12">Alamat</TableHead>
+                      <TableHead className="font-medium h-12">Pekerjaan</TableHead>
                       <TableHead className="w-[80px] h-12"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {dataPenduduk.map((penduduk) => (
-                      <TableRow key={penduduk.id} className="border-border/10 hover:bg-white/5 transition-colors">
+                      <TableRow key={penduduk.id}>
                         <TableCell className="font-mono text-sm">{penduduk.nik}</TableCell>
                         <TableCell className="font-medium">{penduduk.namaLengkap}</TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground border">
                             {penduduk.jenisKelamin}
                           </span>
                         </TableCell>
@@ -205,14 +204,14 @@ export default function KependudukanPage() {
                         <TableCell className="text-sm text-muted-foreground">{penduduk.pekerjaan}</TableCell>
                         <TableCell>
                           <DropdownMenu>
-                            <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring">
                               <span className="sr-only">Buka menu</span>
                               <MoreHorizontal className="h-4 w-4" />
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-popover/90 backdrop-blur-xl border-white/10 shadow-xl">
+                            <DropdownMenuContent align="end">
                               <DropdownMenuGroup>
                                 <DropdownMenuLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Aksi</DropdownMenuLabel>
-                                <DropdownMenuItem className="focus:bg-white/10 cursor-pointer">
+                                <DropdownMenuItem className="cursor-pointer">
                                   <Pencil className="mr-2 h-4 w-4" /> Edit
                                 </DropdownMenuItem>
                                 <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer">
