@@ -116,7 +116,8 @@ export default function EditPendudukPage() {
     setIsLoading(true)
 
     try {
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/penduduk/${id}`
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+      const url = `${baseUrl}/api/penduduk/${id}`
       
       const formattedData = {
         ...data,

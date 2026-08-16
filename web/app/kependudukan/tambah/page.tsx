@@ -68,7 +68,8 @@ export default function TambahPendudukPage() {
     setIsLoading(true)
 
     try {
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/penduduk`
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+      const url = `${baseUrl}/api/penduduk`
       
       const formattedData = {
         ...data,
