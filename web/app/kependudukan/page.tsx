@@ -72,13 +72,18 @@ export default function KependudukanPage() {
   
   const { useSession } = authClient;
   const { data: session, isPending: isSessionPending } = useSession()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     // Jika selesai loading sesi dan tidak ada session, lempar ke login
-    if (!isSessionPending && !session) {
+    if (mounted && !isSessionPending && !session) {
       router.push("/login")
     }
-  }, [session, isSessionPending, router])
+  }, [session, isSessionPending, router, mounted])
 
   // Fetch Data Penduduk
   const fetchPenduduk = async (search = "", page = 1) => {
@@ -168,10 +173,9 @@ export default function KependudukanPage() {
     }
   }
 
-  // Jika masih memeriksa sesi, tampilkan loading full-screen
-  if (isSessionPending) {
+  if (!mounted || isSessionPending) {
     return (
-      <div className="flex h-full items-center justify-center p-24">
+      <div className="flex h-full min-h-[50vh] items-center justify-center p-24">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
