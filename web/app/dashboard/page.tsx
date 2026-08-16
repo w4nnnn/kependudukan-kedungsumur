@@ -130,9 +130,12 @@ export default function DashboardPage() {
       })
       
       if (res.ok) {
-        const json = await res.json()
-        if (json.success) {
-          setDataPenduduk(json.data)
+        const text = await res.text()
+        if (text) {
+          const json = JSON.parse(text)
+          if (json.success) {
+            setDataPenduduk(json.data)
+          }
         }
       } else if (res.status === 401 || res.status === 403) {
         // Jika API menolak karena sesi tidak valid
