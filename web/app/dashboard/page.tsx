@@ -222,7 +222,7 @@ export default function DashboardPage() {
 
         {/* Card Tabel */}
         <Card className="glass-dark border-border/20 overflow-hidden">
-          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-border/10 bg-black/20">
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-border/10">
             <CardTitle className="text-xl font-medium tracking-wide">Daftar Penduduk</CardTitle>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative group">
