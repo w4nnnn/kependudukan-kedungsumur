@@ -14,7 +14,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue , SelectLabel, SelectGroup } from "@/components/ui/select"
 import { authClient } from "@/lib/auth-client"
 import { toast } from "sonner" // Asumsi menggunakan sonner dari shadcn
 
@@ -158,11 +158,11 @@ export default function TambahPendudukPage() {
                   {errors.tempatLahir && <p className="text-sm text-destructive">{errors.tempatLahir.message}</p>}
                 </div>
 
-                <div className="space-y-2 flex flex-col pt-2">
+                <div className="flex flex-col space-y-2">
                   <label className="text-sm font-medium">Tanggal Lahir</label>
                   <Popover>
                     <PopoverTrigger className={cn(
-                        "w-full justify-start text-left font-normal inline-flex items-center rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+                        "w-full h-9 justify-start text-left font-normal inline-flex items-center rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
                         !watch("tanggalLahir") && "text-muted-foreground"
                       )}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -171,6 +171,7 @@ export default function TambahPendudukPage() {
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
+                        captionLayout="dropdown"
                         selected={watch("tanggalLahir") as Date}
                         onSelect={(date) => setValue("tanggalLahir", date as Date)}
                       />
@@ -187,8 +188,11 @@ export default function TambahPendudukPage() {
                       <SelectValue placeholder="Pilih Jenis Kelamin" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Laki-laki">Laki-laki</SelectItem>
-                      <SelectItem value="Perempuan">Perempuan</SelectItem>
+                      <SelectGroup>
+                        <SelectLabel>Jenis Kelamin</SelectLabel>
+                        <SelectItem value="Laki-laki">Laki-laki</SelectItem>
+                        <SelectItem value="Perempuan">Perempuan</SelectItem>
+                      </SelectGroup>
                     </SelectContent>
                   </Select>
                   {errors.jenisKelamin && <p className="text-sm text-destructive">{errors.jenisKelamin.message}</p>}
@@ -209,12 +213,15 @@ export default function TambahPendudukPage() {
                       <SelectValue placeholder="Pilih Agama" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Islam">Islam</SelectItem>
-                      <SelectItem value="Kristen">Kristen</SelectItem>
-                      <SelectItem value="Katolik">Katolik</SelectItem>
-                      <SelectItem value="Hindu">Hindu</SelectItem>
-                      <SelectItem value="Buddha">Buddha</SelectItem>
-                      <SelectItem value="Konghucu">Konghucu</SelectItem>
+                      <SelectGroup>
+                        <SelectLabel>Agama</SelectLabel>
+                        <SelectItem value="Islam">Islam</SelectItem>
+                        <SelectItem value="Kristen">Kristen</SelectItem>
+                        <SelectItem value="Katolik">Katolik</SelectItem>
+                        <SelectItem value="Hindu">Hindu</SelectItem>
+                        <SelectItem value="Buddha">Buddha</SelectItem>
+                        <SelectItem value="Konghucu">Konghucu</SelectItem>
+                      </SelectGroup>
                     </SelectContent>
                   </Select>
                   {errors.agama && <p className="text-sm text-destructive">{errors.agama.message}</p>}
@@ -228,10 +235,13 @@ export default function TambahPendudukPage() {
                       <SelectValue placeholder="Pilih Status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Belum Kawin">Belum Kawin</SelectItem>
-                      <SelectItem value="Kawin">Kawin</SelectItem>
-                      <SelectItem value="Cerai Hidup">Cerai Hidup</SelectItem>
-                      <SelectItem value="Cerai Mati">Cerai Mati</SelectItem>
+                      <SelectGroup>
+                        <SelectLabel>Status Perkawinan</SelectLabel>
+                        <SelectItem value="Belum Kawin">Belum Kawin</SelectItem>
+                        <SelectItem value="Kawin">Kawin</SelectItem>
+                        <SelectItem value="Cerai Hidup">Cerai Hidup</SelectItem>
+                        <SelectItem value="Cerai Mati">Cerai Mati</SelectItem>
+                      </SelectGroup>
                     </SelectContent>
                   </Select>
                   {errors.statusPerkawinan && <p className="text-sm text-destructive">{errors.statusPerkawinan.message}</p>}

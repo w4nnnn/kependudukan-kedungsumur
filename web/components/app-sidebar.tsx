@@ -86,7 +86,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <SidebarMenuButton 
                 render={
-                  <button onClick={handleLogout}>
+                  <button onClick={handleLogout} className="border-2 border-destructive/20">
                     <LogOut />
                     <span>Keluar</span>
                   </button>
