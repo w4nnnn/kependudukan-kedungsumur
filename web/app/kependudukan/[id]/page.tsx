@@ -115,7 +115,7 @@ export default function DetailPendudukPage() {
         <div className="grid gap-6 md:grid-cols-2">
           {/* Card Identitas Utama */}
           <Card className="md:col-span-2">
-            <CardHeader className="bg-muted/40 pb-4">
+            <CardHeader className="border-b pb-4">
               <div className="flex items-center gap-2">
                 <User className="h-5 w-5 text-primary" />
                 <CardTitle>Identitas Utama</CardTitle>
@@ -139,7 +139,7 @@ export default function DetailPendudukPage() {
 
           {/* Card Data Pribadi */}
           <Card>
-            <CardHeader className="bg-muted/40 pb-4">
+            <CardHeader className="border-b pb-4">
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
                 <CardTitle>Data Pribadi</CardTitle>
@@ -174,7 +174,7 @@ export default function DetailPendudukPage() {
 
           {/* Card Domisili & Status */}
           <Card>
-            <CardHeader className="bg-muted/40 pb-4">
+            <CardHeader className="border-b pb-4">
               <div className="flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-primary" />
                 <CardTitle>Domisili & Pekerjaan</CardTitle>
