@@ -34,6 +34,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination"
 import { toast } from "sonner"
 
 interface Penduduk {
@@ -55,6 +64,7 @@ interface Penduduk {
 export default function KependudukanPage() {
   const router = useRouter()
   const [dataPenduduk, setDataPenduduk] = useState<Penduduk[]>([])
+  const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 })
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [deleteData, setDeleteData] = useState<{ id: string, name: string } | null>(null)
@@ -71,10 +81,13 @@ export default function KependudukanPage() {
   }, [session, isSessionPending, router])
 
   // Fetch Data Penduduk
-  const fetchPenduduk = async (search = "") => {
+  const fetchPenduduk = async (search = "", page = 1) => {
     setIsLoading(true)
     try {
-      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/api/penduduk`)
+      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk`)
+      url.searchParams.append("page", page.toString())
+      url.searchParams.append("limit", "10")
+
       if (search) {
         if (/^\d{16}$/.test(search)) {
           url.searchParams.append("nik", search)
@@ -83,7 +96,6 @@ export default function KependudukanPage() {
         }
       }
       
-      // Kita butuh kredensial (cookie) untuk dikirim ke API Fastify
       const res = await fetch(url.toString(), {
         credentials: "include", 
       })
@@ -94,10 +106,10 @@ export default function KependudukanPage() {
           const json = JSON.parse(text)
           if (json.success) {
             setDataPenduduk(json.data)
+            if (json.meta) setMeta(json.meta)
           }
         }
       } else if (res.status === 401 || res.status === 403) {
-        // Jika API menolak karena sesi tidak valid
         router.push("/login")
       }
     } catch (error) {
@@ -225,55 +237,122 @@ export default function KependudukanPage() {
                 <p className="text-sm mt-1">Coba gunakan kata kunci pencarian yang lain.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto mx-2">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="font-medium h-12">NIK</TableHead>
-                      <TableHead className="font-medium h-12">Nama Lengkap</TableHead>
-                      <TableHead className="font-medium h-12">Jenis Kelamin</TableHead>
-                      <TableHead className="font-medium h-12">Alamat</TableHead>
-                      <TableHead className="font-medium h-12">Pekerjaan</TableHead>
-                      <TableHead className="w-[80px] h-12"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {dataPenduduk.map((penduduk) => (
-                      <TableRow key={penduduk.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/kependudukan/${penduduk.id}`)}>
-                        <TableCell className="font-mono text-sm">{penduduk.nik}</TableCell>
-                        <TableCell className="font-medium">{penduduk.namaLengkap}</TableCell>
-                        <TableCell>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground border">
-                            {penduduk.jenisKelamin}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {penduduk.alamat}, RT {penduduk.rt}/RW {penduduk.rw}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{penduduk.pekerjaan}</TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                              <span className="sr-only">Buka menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuGroup>
-                                <DropdownMenuLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Aksi</DropdownMenuLabel>
-                                <DropdownMenuItem className="cursor-pointer" onClick={() => router.push(`/kependudukan/edit/${penduduk.id}`)}>
-                                  <Pencil className="mr-2 h-4 w-4" /> Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem variant="destructive" className="cursor-pointer" onClick={() => setDeleteData({ id: penduduk.id, name: penduduk.namaLengkap })}>
-                                  <Trash className="mr-2 h-4 w-4" /> Hapus
-                                </DropdownMenuItem>
-                              </DropdownMenuGroup>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+              <div className="flex flex-col w-full">
+                <div className="overflow-x-auto mx-2">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="font-medium h-12">NIK</TableHead>
+                        <TableHead className="font-medium h-12">Nama Lengkap</TableHead>
+                        <TableHead className="font-medium h-12">Jenis Kelamin</TableHead>
+                        <TableHead className="font-medium h-12">Alamat</TableHead>
+                        <TableHead className="font-medium h-12">Pekerjaan</TableHead>
+                        <TableHead className="w-[80px] h-12"></TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {dataPenduduk.map((penduduk) => (
+                        <TableRow key={penduduk.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/kependudukan/${penduduk.id}`)}>
+                          <TableCell className="font-mono text-sm">{penduduk.nik}</TableCell>
+                          <TableCell className="font-medium">{penduduk.namaLengkap}</TableCell>
+                          <TableCell>
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground border">
+                              {penduduk.jenisKelamin}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {penduduk.alamat}, RT {penduduk.rt}/RW {penduduk.rw}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{penduduk.pekerjaan}</TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                <span className="sr-only">Buka menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuGroup>
+                                  <DropdownMenuLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Aksi</DropdownMenuLabel>
+                                  <DropdownMenuItem className="cursor-pointer" onClick={() => router.push(`/kependudukan/edit/${penduduk.id}`)}>
+                                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem variant="destructive" className="cursor-pointer" onClick={() => setDeleteData({ id: penduduk.id, name: penduduk.namaLengkap })}>
+                                    <Trash className="mr-2 h-4 w-4" /> Hapus
+                                  </DropdownMenuItem>
+                                </DropdownMenuGroup>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                
+                {meta.totalPages > 1 && (
+                  <div className="border-t p-4 mt-auto">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            href="#" 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (meta.page > 1) fetchPenduduk(searchQuery, meta.page - 1);
+                            }}
+                            className={meta.page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                        
+                        {Array.from({ length: meta.totalPages }).map((_, i) => {
+                          const pageNumber = i + 1;
+                          
+                          if (
+                            meta.totalPages > 5 && 
+                            pageNumber !== 1 && 
+                            pageNumber !== meta.totalPages && 
+                            Math.abs(pageNumber - meta.page) > 1
+                          ) {
+                            if (pageNumber === 2 || pageNumber === meta.totalPages - 1) {
+                              return (
+                                <PaginationItem key={`ellipsis-${pageNumber}`}>
+                                  <PaginationEllipsis />
+                                </PaginationItem>
+                              )
+                            }
+                            return null;
+                          }
+                          
+                          return (
+                            <PaginationItem key={pageNumber}>
+                              <PaginationLink
+                                href="#"
+                                isActive={meta.page === pageNumber}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  fetchPenduduk(searchQuery, pageNumber);
+                                }}
+                              >
+                                {pageNumber}
+                              </PaginationLink>
+                            </PaginationItem>
+                          )
+                        })}
+
+                        <PaginationItem>
+                          <PaginationNext 
+                            href="#" 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (meta.page < meta.totalPages) fetchPenduduk(searchQuery, meta.page + 1);
+                            }}
+                            className={meta.page >= meta.totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/index.js";
 import { pendudukTable, hashKependudukan } from "../db/schema/schema.js";
-import { eq, ilike, and } from "drizzle-orm";
+import { eq, ilike, and, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 
 type PendudukInsert = typeof pendudukTable.$inferInsert;
@@ -13,10 +13,12 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
 
   fastify.get("/api/penduduk", async (request, reply) => {
     try {
-      const { search, nik, nokk, limit = 100, page = 1 } = request.query as any;
-      const offset = (Number(page) - 1) * Number(limit);
+      const limitNum = Number(limit) || 10;
+      const pageNum = Number(page) || 1;
+      const offset = (pageNum - 1) * limitNum;
 
       let query = db.select().from(pendudukTable).$dynamic();
+      let countQuery = db.select({ count: sql`count(*)` }).from(pendudukTable).$dynamic();
 
       const conditions = [];
 
@@ -33,11 +35,26 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
       }
 
       if (conditions.length > 0) {
-        query = query.where(and(...conditions));
+        const whereClause = and(...conditions);
+        query = query.where(whereClause);
+        countQuery = countQuery.where(whereClause);
       }
 
-      const data = await query.limit(Number(limit)).offset(offset);
-      return reply.send({ success: true, data });
+      const [data, [{ count }]] = await Promise.all([
+        query.limit(limitNum).offset(offset),
+        countQuery
+      ]);
+
+      return reply.send({ 
+        success: true, 
+        data,
+        meta: {
+          total: Number(count),
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(Number(count) / limitNum)
+        }
+      });
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send({ success: false, message: "Gagal mengambil data." });
