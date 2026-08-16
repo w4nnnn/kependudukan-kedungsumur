@@ -76,7 +76,11 @@ export default function KependudukanPage() {
     try {
       const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/api/penduduk`)
       if (search) {
-        url.searchParams.append("search", search)
+        if (/^\d{16}$/.test(search)) {
+          url.searchParams.append("nik", search)
+        } else {
+          url.searchParams.append("search", search)
+        }
       }
       
       // Kita butuh kredensial (cookie) untuk dikirim ke API Fastify
@@ -189,13 +193,13 @@ export default function KependudukanPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center w-full sm:w-auto">
               <div className="relative group w-full sm:w-auto">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors" />
-                <Input
-                  type="search"
-                  placeholder="Cari nama penduduk..."
-                  className="w-full pl-9 sm:w-72 transition-all rounded-lg"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+                  <Input
+                    type="search"
+                    placeholder="Cari nama atau NIK (16 digit)..."
+                    className="w-full pl-9 sm:w-72 transition-all rounded-lg"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
               </div>
               <Button 
                 onClick={() => router.push("/kependudukan/tambah")}
