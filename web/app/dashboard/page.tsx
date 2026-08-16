@@ -18,6 +18,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
@@ -195,20 +196,20 @@ export default function DashboardPage() {
                         <TableCell>{penduduk.pekerjaan}</TableCell>
                         <TableCell>
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Buka menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
+                            <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                              <span className="sr-only">Buka menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                              <DropdownMenuItem>
-                                <Pencil className="mr-2 h-4 w-4" /> Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive">
-                                <Trash className="mr-2 h-4 w-4" /> Hapus
-                              </DropdownMenuItem>
+                              <DropdownMenuGroup>
+                                <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                                <DropdownMenuItem>
+                                  <Pencil className="mr-2 h-4 w-4" /> Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">
+                                  <Trash className="mr-2 h-4 w-4" /> Hapus
+                                </DropdownMenuItem>
+                              </DropdownMenuGroup>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
