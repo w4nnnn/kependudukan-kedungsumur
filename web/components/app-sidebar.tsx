@@ -16,6 +16,7 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
+import { Card } from "@/components/ui/card"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
@@ -73,27 +74,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="p-4 gap-4 flex-col">
-        {session?.user && (
-          <div className="flex flex-col gap-1 px-2 py-1.5 opacity-80 group-data-[collapsible=icon]:hidden">
-            <span className="text-xs font-medium text-muted-foreground">Masuk sebagai:</span>
-            <span className="text-sm font-semibold truncate text-foreground">{session.user.name}</span>
-          </div>
-        )}
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton 
-              render={
-                <button onClick={handleLogout}>
-                  <LogOut />
-                  <span>Keluar</span>
-                </button>
-              }
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-              tooltip="Keluar"
-            />
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarFooter className="p-4">
+        <Card className="flex flex-col gap-3 p-3 bg-white/5 border-white/10 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:border-transparent shadow-none">
+          {session?.user && (
+            <div className="flex flex-col gap-0.5 px-1 opacity-90 group-data-[collapsible=icon]:hidden">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Masuk sebagai</span>
+              <span className="text-sm font-semibold truncate text-foreground">{session.user.name}</span>
+            </div>
+          )}
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton 
+                render={
+                  <button onClick={handleLogout}>
+                    <LogOut />
+                    <span>Keluar</span>
+                  </button>
+                }
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive group-data-[collapsible=icon]:justify-center"
+                tooltip="Keluar"
+              />
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </Card>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

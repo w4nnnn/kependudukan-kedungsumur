@@ -215,7 +215,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Data Kependudukan</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Kelola data penduduk Desa Kedungsumur dengan mudah.
+              Kelola data penduduk Desa Kedungsumur.
             </p>
           </div>
         </div>
