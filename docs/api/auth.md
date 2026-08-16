@@ -99,7 +99,155 @@ Jika pengguna belum login atau sesi telah kedaluwarsa, API biasanya akan mengemb
 
 ---
 
-## 4. Route Uji Coba Middleware: GET `/api/me`
+## 4. Manajemen Pengguna (Admin Plugin)
+
+Aplikasi ini menggunakan plugin `admin()` dari Better Auth. Berikut adalah beberapa endpoint yang tersedia secara otomatis dari plugin admin.
+
+> **Catatan Penting:** Rute-rute ini dilindungi oleh middleware admin bawaan dari Better Auth. Anda harus login sebagai pengguna dengan role `admin` dan memiliki permission yang sesuai untuk mengaksesnya.
+
+### 4.1 GET `/api/auth/admin/list-users` (Daftar Pengguna)
+
+Mendapatkan daftar semua pengguna dalam sistem.
+
+*   **URL:** `/api/auth/admin/list-users`
+*   **Method:** `GET`
+*   **Headers:**
+    *   *(Memerlukan cookie sesi atau header Authorization dari admin)*
+*   **Query Parameters (Opsional):**
+    *   `limit`: Jumlah data per halaman (default 100)
+    *   `offset`: Lewati N data pertama
+    *   `searchValue`: Kata kunci pencarian
+    *   `searchField`: Kolom pencarian (`email` atau `name`)
+
+**Response Sukses (200 OK):**
+```json
+{
+  "users": [
+    {
+      "id": "user1...",
+      "email": "user1@example.com",
+      "name": "User One",
+      "role": "user"
+    }
+  ],
+  "total": 1,
+  "limit": 100,
+  "offset": 0
+}
+```
+
+---
+
+### 4.2 POST `/api/auth/admin/update-user` (Ubah Pengguna)
+
+Mengubah data pengguna (nama, role, email diverifikasi, ban status, dll).
+
+*   **URL:** `/api/auth/admin/update-user`
+*   **Method:** `POST`
+*   **Headers:**
+    *   `Content-Type: application/json`
+    *   *(Memerlukan cookie sesi admin)*
+
+**Body Request:**
+```json
+{
+  "userId": "ckzq9...",
+  "data": {
+    "name": "Nama Baru",
+    "banned": true,
+    "banReason": "Melanggar aturan"
+  }
+}
+```
+
+---
+
+### 4.3 POST `/api/auth/admin/set-role` (Ubah Role)
+
+Menetapkan role kepada pengguna.
+
+*   **URL:** `/api/auth/admin/set-role`
+*   **Method:** `POST`
+*   **Headers:**
+    *   `Content-Type: application/json`
+    *   *(Memerlukan cookie sesi admin)*
+
+**Body Request:**
+```json
+{
+  "userId": "ckzq9...",
+  "role": "admin"
+}
+```
+
+---
+
+### 4.4 POST `/api/auth/admin/remove-user` (Hapus Pengguna)
+
+Menghapus pengguna secara permanen dari database.
+
+*   **URL:** `/api/auth/admin/remove-user`
+*   **Method:** `POST`
+*   **Headers:**
+    *   `Content-Type: application/json`
+    *   *(Memerlukan cookie sesi admin)*
+
+**Body Request:**
+```json
+{
+  "userId": "ckzq9..."
+}
+```
+
+---
+
+### 4.5 POST `/api/auth/admin/impersonate-user` (Impersonasi)
+
+Mengambil alih sesi pengguna tertentu (impersonasi). Berguna untuk tujuan dukungan teknis/debug.
+
+*   **URL:** `/api/auth/admin/impersonate-user`
+*   **Method:** `POST`
+*   **Headers:**
+    *   `Content-Type: application/json`
+    *   *(Memerlukan cookie sesi admin)*
+
+**Body Request:**
+```json
+{
+  "userId": "ckzq9..."
+}
+```
+
+---
+
+### 4.6 POST `/api/auth/admin/create-user` (Buat Pengguna)
+
+Membuat pengguna baru melalui panel admin. Bermanfaat jika fitur sign-up publik dimatikan (Closed System).
+
+*   **URL:** `/api/auth/admin/create-user`
+*   **Method:** `POST`
+*   **Headers:**
+    *   `Content-Type: application/json`
+    *   *(Memerlukan cookie sesi admin dengan permission create)*
+
+**Body Request:**
+```json
+{
+  "email": "user@example.com",
+  "password": "PasswordUserBaru123!",
+  "name": "Nama User",
+  "role": "user",
+  "data": {
+    "username": "usernameresmi"
+  }
+}
+```
+
+*Catatan:* `data` digunakan untuk menyisipkan bidang tambahan yang ada di skema (misal: plugin `username` yang ditambahkan ke Better Auth).
+
+---
+
+## 5. Route Uji Coba Middleware: GET `/api/me`
 
 Ini adalah rute kustom yang kita buat di Fastify (menggunakan `requireAuth`) untuk membuktikan bahwa perlindungan middleware berfungsi.
 
@@ -130,25 +278,65 @@ Ini adalah rute kustom yang kita buat di Fastify (menggunakan `requireAuth`) unt
 
 ---
 
-## Penting: Penggunaan pada Frontend Klien
-Jika Anda menggunakan framework frontend (seperti React, Vue, Svelte), disarankan **TIDAK** menembak API di atas secara manual menggunakan `fetch` atau `axios`. 
+## 6. Penggunaan di Frontend (Better Auth Client)
 
-Gunakanlah *client library* bawaan Better Auth (`@better-auth/client`). Library ini akan otomatis mengurus URL, pengiriman cookie, dan tipe data TypeScript dengan sangat rapi.
+Daripada melakukan HTTP Request (Fetch/Axios) secara manual ke endpoint `/api/auth/*` seperti di atas, sangat disarankan untuk menggunakan **Better Auth Client** di sisi Frontend. Client ini sudah menyediakan *wrapper* yang rapi untuk semua operasi, termasuk manajemen state sesi dan akses ke fitur plugin `admin()`.
 
-Contoh di Frontend:
-```javascript
-import { createAuthClient } from "better-auth/client"
+### Inisialisasi Auth Client (Frontend)
 
-const authClient = createAuthClient({
-    baseURL: "http://localhost:3000" // URL API Fastify Anda
-})
+```typescript
+// src/lib/auth-client.ts (di frontend)
+import { createAuthClient } from "better-auth/client";
+import { adminClient, usernameClient } from "better-auth/client/plugins";
 
-// Cara Login:
+export const authClient = createAuthClient({
+    baseURL: "http://localhost:3000", // Sesuaikan dengan base URL backend
+    plugins: [
+        adminClient(),
+        usernameClient()
+    ]
+});
+```
+
+### Contoh Penggunaan
+
+**1. Login dengan Username**
+```typescript
 const { data, error } = await authClient.signIn.username({
     username: "superadmin",
     password: "PasswordRahasia123!"
 });
-
-// Cara mengecek sesi aktif:
-const { data: session } = await authClient.useSession();
 ```
+
+**2. Logout**
+```typescript
+await authClient.signOut();
+```
+
+**3. Mendapatkan Daftar Pengguna (Admin)**
+```typescript
+const { data, error } = await authClient.admin.listUsers({
+    query: {
+        limit: 10,
+        searchValue: "admin",
+        searchField: "name"
+    }
+});
+```
+
+**4. Membuat Pengguna Baru (Admin)**
+```typescript
+const { data, error } = await authClient.admin.createUser({
+    email: "user@example.com",
+    name: "Nama User",
+    password: "PasswordUserBaru123!",
+    role: "user",
+    data: {
+        username: "usernameresmi" // Custom field via data
+    }
+});
+```
+
+Untuk selengkapnya mengenai Better Auth Client, Anda bisa membaca dokumentasi resminya.
+
+---
