@@ -21,7 +21,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js",
+    "start": "node dist/src/index.js",
     "build": "tsc",
     "create-admin": "tsx scripts/create-admin.ts",
     "generate:keys": "node scripts/generate-keys.js",
