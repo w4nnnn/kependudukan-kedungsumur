@@ -1,11 +1,9 @@
 import { pgTable, varchar, date, uuid, customType, index } from "drizzle-orm/pg-core";
-import Cryptr from "cryptr";
 import { createHash, randomBytes, createCipheriv, createDecipheriv } from "crypto";
 import "dotenv/config";
 
 const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET_KEY || "rahasia_negara_development_key_12345";
 const aesKey = createHash("sha256").update(ENCRYPTION_SECRET).digest();
-const legacyCryptr = new Cryptr(ENCRYPTION_SECRET);
 
 export function encryptAesGcm(text: string): string {
   const iv = randomBytes(12);
@@ -16,22 +14,14 @@ export function encryptAesGcm(text: string): string {
 }
 
 export function decryptAesGcm(cipherText: string): string {
-  try {
-    const buf = Buffer.from(cipherText, "base64");
-    if (buf.length < 28) throw new Error("Invalid payload length");
-    const iv = buf.subarray(0, 12);
-    const tag = buf.subarray(12, 28);
-    const encrypted = buf.subarray(28);
-    const decipher = createDecipheriv("aes-256-gcm", aesKey, iv);
-    decipher.setAuthTag(tag);
-    return decipher.update(encrypted, undefined, "utf8") + decipher.final("utf8");
-  } catch {
-    try {
-      return legacyCryptr.decrypt(cipherText);
-    } catch {
-      return cipherText;
-    }
-  }
+  const buf = Buffer.from(cipherText, "base64");
+  if (buf.length < 28) return cipherText;
+  const iv = buf.subarray(0, 12);
+  const tag = buf.subarray(12, 28);
+  const encrypted = buf.subarray(28);
+  const decipher = createDecipheriv("aes-256-gcm", aesKey, iv);
+  decipher.setAuthTag(tag);
+  return decipher.update(encrypted, undefined, "utf8") + decipher.final("utf8");
 }
 
 const encryptedVarchar = customType<{ data: string; driverData: string }>({

@@ -26,6 +26,7 @@
     "create-admin": "tsx scripts/create-admin.ts",
     "generate:keys": "node scripts/generate-keys.js",
     "seed:penduduk": "tsx scripts/seed-penduduk.ts",
+    "migrate:encryption": "tsx scripts/migrate-encryption.ts",
     "test:api": "tsx scripts/test-api.ts"
   }
 }
