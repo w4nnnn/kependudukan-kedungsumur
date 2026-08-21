@@ -44,7 +44,7 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
         countQuery
       ]);
 
-      const total = totalCount[0].count;
+      const total = totalCount[0]?.count ?? 0;
       const totalPages = Math.ceil(total / Number(limit));
 
       return reply.send({ 
@@ -98,7 +98,13 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
       });
     } catch (error: any) {
       fastify.log.error(error);
-      if (error.code === '23505') {
+      const isUniqueViolation = 
+        error?.code === '23505' || 
+        error?.cause?.code === '23505' ||
+        error?.message?.includes('duplicate key') ||
+        error?.cause?.message?.includes('duplicate key');
+
+      if (isUniqueViolation) {
         return reply.status(400).send({ success: false, message: "NIK sudah terdaftar." });
       }
       return reply.status(500).send({ success: false, message: "Gagal menyimpan data." });
@@ -130,7 +136,13 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
       });
     } catch (error: any) {
       fastify.log.error(error);
-      if (error.code === '23505') {
+      const isUniqueViolation = 
+        error?.code === '23505' || 
+        error?.cause?.code === '23505' ||
+        error?.message?.includes('duplicate key') ||
+        error?.cause?.message?.includes('duplicate key');
+
+      if (isUniqueViolation) {
         return reply.status(400).send({ success: false, message: "NIK sudah terdaftar." });
       }
       return reply.status(500).send({ success: false, message: "Gagal memperbarui data." });

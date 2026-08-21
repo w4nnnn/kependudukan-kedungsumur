@@ -3,7 +3,7 @@ import { pendudukTable, hashKependudukan } from "../src/db/schema/schema.js";
 
 // Helper functions for random data generation
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
-const randomElement = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const randomElement = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]!;
 const randomDate = (start: Date, end: Date) => {
   return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 };
