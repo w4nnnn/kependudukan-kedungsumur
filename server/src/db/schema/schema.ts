@@ -1,21 +1,38 @@
 import { pgTable, varchar, date, uuid, customType, index } from "drizzle-orm/pg-core";
-import Cryptr from "cryptr";
-import { createHash } from "crypto";
+import { createHash, randomBytes, createCipheriv, createDecipheriv } from "crypto";
 import "dotenv/config";
 
 const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET_KEY || "rahasia_negara_development_key_12345";
-const cryptr = new Cryptr(ENCRYPTION_SECRET);
+const aesKey = createHash("sha256").update(ENCRYPTION_SECRET).digest();
+
+export function encryptAesGcm(text: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", aesKey, iv);
+  const encrypted = Buffer.concat([cipher.update(text, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, encrypted]).toString("base64");
+}
+
+export function decryptAesGcm(cipherText: string): string {
+  const buf = Buffer.from(cipherText, "base64");
+  const iv = buf.subarray(0, 12);
+  const tag = buf.subarray(12, 28);
+  const encrypted = buf.subarray(28);
+  const decipher = createDecipheriv("aes-256-gcm", aesKey, iv);
+  decipher.setAuthTag(tag);
+  return decipher.update(encrypted, undefined, "utf8") + decipher.final("utf8");
+}
 
 const encryptedVarchar = customType<{ data: string; driverData: string }>({
   dataType() {
     return "text";
   },
   toDriver(value: string) {
-    return cryptr.encrypt(value);
+    return encryptAesGcm(value);
   },
   fromDriver(value: unknown) {
     if (typeof value !== "string") return value as string;
-    return cryptr.decrypt(value);
+    return decryptAesGcm(value);
   },
 });
 
