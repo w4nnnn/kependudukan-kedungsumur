@@ -2,7 +2,7 @@
 
 Aplikasi Kependudukan ini menggunakan **Better Auth** untuk menangani autentikasi pengguna secara aman. Seluruh proses autentikasi (login, logout, cek sesi) diatur menggunakan metode **Database Session (Opaque Token)**, bukan JWT, untuk keamanan yang lebih ketat pada *Closed System*.
 
-> **Base URL:** `http://localhost:3000`
+> **Base URL:** `http://localhost:4000` (atau sesuai konfigurasi `PORT`/`BETTER_AUTH_URL` pada server)
 
 ---
 

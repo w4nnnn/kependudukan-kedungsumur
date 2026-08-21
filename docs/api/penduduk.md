@@ -3,7 +3,7 @@
 Dokumen ini menjelaskan *endpoint* (titik akhir) untuk mengelola data Penduduk Desa Kedungsumur. 
 Semua *endpoint* di bawah ini **terproteksi**. Anda **wajib login** terlebih dahulu (memiliki *session cookie* aktif dari Better Auth) untuk dapat mengakses rute-rute ini.
 
-> **Base URL:** `http://localhost:3000`
+> **Base URL:** `http://localhost:4000` (atau sesuai konfigurasi `PORT`/`BETTER_AUTH_URL` pada server)
 
 ---
 
@@ -30,7 +30,7 @@ Mengambil daftar penduduk dari database. Mendukung fitur pencarian dinamis dan p
   "success": true,
   "data": [
     {
-      "id": "e4a2f8b1-3c9d...",
+      "id": "e4a2f8b1-3c9d-4e2b-8a5f-7c1e3d2a1b0c",
       "nik": "3573010000000001", // Otomatis didekripsi oleh server
       "noKk": "3573011111111111",
       "namaLengkap": "Budi Santoso",
@@ -44,7 +44,13 @@ Mengambil daftar penduduk dari database. Mendukung fitur pencarian dinamis dan p
       "statusPerkawinan": "Kawin",
       "pekerjaan": "PNS"
     }
-  ]
+  ],
+  "meta": {
+    "total": 150,
+    "page": 1,
+    "limit": 100,
+    "totalPages": 2
+  }
 }
 ```
 
