@@ -54,6 +54,7 @@ interface Penduduk {
 
 export default function KependudukanPage() {
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
   const [dataPenduduk, setDataPenduduk] = useState<Penduduk[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -68,11 +69,14 @@ export default function KependudukanPage() {
   const { data: session, isPending: isSessionPending } = useSession()
 
   useEffect(() => {
-    // Jika selesai loading sesi dan tidak ada session, lempar ke login
-    if (!isSessionPending && !session) {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (mounted && !isSessionPending && !session) {
       router.push("/login")
     }
-  }, [session, isSessionPending, router])
+  }, [mounted, session, isSessionPending, router])
 
   // Fetch Data Penduduk
   const fetchPenduduk = async (search = "", page = 1) => {
@@ -166,8 +170,7 @@ export default function KependudukanPage() {
     }
   }
 
-  // Jika masih memeriksa sesi, tampilkan loading full-screen
-  if (isSessionPending) {
+  if (!mounted || isSessionPending) {
     return (
       <div className="flex h-full items-center justify-center p-24">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
