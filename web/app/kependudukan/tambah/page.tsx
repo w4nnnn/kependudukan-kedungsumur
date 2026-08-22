@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Calendar as CalendarIcon, Loader2, ArrowLeft, Save } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, ArrowLeft, Save, Upload, X, Image as ImageIcon } from "lucide-react"
 import { format } from "date-fns"
 
 import { cn } from "@/lib/utils"
@@ -15,8 +15,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue , SelectLabel, SelectGroup } from "@/components/ui/select"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { authClient } from "@/lib/auth-client"
-import { toast } from "sonner" // Asumsi menggunakan sonner dari shadcn
+import { toast } from "sonner"
 
 const formSchema = z.object({
   nik: z.string().length(16, "NIK harus tepat 16 digit"),
@@ -40,6 +41,9 @@ type FormValues = z.infer<typeof formSchema>
 export default function TambahPendudukPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const {
     register,
@@ -63,6 +67,40 @@ export default function TambahPendudukPage() {
       pekerjaan: "",
     },
   })
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Format file tidak didukung", {
+        description: "Harap unggah gambar bertipe JPG, PNG, atau WebP.",
+      })
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Ukuran file terlalu besar", {
+        description: "Maksimal ukuran foto adalah 5MB.",
+      })
+      return
+    }
+
+    setSelectedFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
+  }
+
+  const handleRemovePhoto = () => {
+    setSelectedFile(null)
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+      setPreviewUrl(null)
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
 
   async function onSubmit(data: FormValues) {
     setIsLoading(true)
@@ -88,6 +126,23 @@ export default function TambahPendudukPage() {
       const result = await response.json()
 
       if (response.ok && result.success) {
+        const newId = result.data?.id
+
+        if (selectedFile && newId) {
+          try {
+            const formData = new FormData()
+            formData.append("file", selectedFile)
+
+            await fetch(`${baseUrl}/api/penduduk/${newId}/foto`, {
+              method: "POST",
+              credentials: "include",
+              body: formData,
+            })
+          } catch (uploadError) {
+            console.error("Gagal mengunggah foto penduduk:", uploadError)
+          }
+        }
+
         toast.success("Berhasil", {
           description: "Data penduduk berhasil ditambahkan.",
         })
@@ -131,6 +186,55 @@ export default function TambahPendudukPage() {
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               
+              <div className="flex flex-col sm:flex-row items-center gap-6 p-4 rounded-xl border bg-muted/20">
+                <div className="relative group">
+                  <Avatar className="size-24 rounded-2xl border-2 border-dashed border-muted-foreground/30 flex items-center justify-center overflow-hidden bg-background">
+                    {previewUrl ? (
+                      <AvatarImage src={previewUrl} alt="Preview Foto" className="rounded-2xl object-cover size-full" />
+                    ) : null}
+                    <AvatarFallback className="rounded-2xl bg-transparent">
+                      <ImageIcon className="size-8 text-muted-foreground/50" />
+                    </AvatarFallback>
+                  </Avatar>
+                  {previewUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 shadow-sm hover:bg-destructive/90 transition-colors"
+                      title="Hapus foto"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  )}
+                </div>
+                <div className="flex-1 space-y-1.5 text-center sm:text-left">
+                  <label className="text-sm font-medium leading-none">Pasfoto Penduduk (Opsional)</label>
+                  <p className="text-xs text-muted-foreground">
+                    Format JPG, PNG, atau WebP. Maksimal 5MB.
+                  </p>
+                  <div className="pt-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      accept="image/jpeg,image/png,image/webp,image/jpg"
+                      className="hidden"
+                      id="foto-upload"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="gap-2"
+                    >
+                      <Upload className="size-4" />
+                      {previewUrl ? "Ganti Foto" : "Pilih Foto"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* NIK & KK */}
                 <div className="space-y-2">
