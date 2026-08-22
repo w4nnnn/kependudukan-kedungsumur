@@ -42,7 +42,9 @@ Mengambil daftar penduduk dari database. Mendukung fitur pencarian dinamis dan p
       "rw": "002",
       "agama": "Islam",
       "statusPerkawinan": "Kawin",
-      "pekerjaan": "PNS"
+      "pekerjaan": "PNS",
+      "foto": "penduduk/e4a2f8b1-3c9d-4e2b-8a5f-7c1e3d2a1b0c-1755850000000.png",
+      "fotoUrl": "http://localhost:9000/kependudukan/penduduk/e4a2f8b1-3c9d-4e2b-8a5f-7c1e3d2a1b0c-1755850000000.png"
     }
   ],
   "meta": {
@@ -156,7 +158,7 @@ Digunakan untuk memperbarui data penduduk yang sudah ada (misalnya: pindah RT/RW
 ---
 
 ## 5. Menghapus Data Penduduk (Delete)
-Digunakan untuk menghapus data penduduk secara permanen dari database.
+Digunakan untuk menghapus data penduduk secara permanen dari database. Jika penduduk memiliki foto yang tersimpan di MinIO, file objek foto tersebut akan otomatis dihapus.
 
 *   **URL:** `/api/penduduk/:id`
 *   **Method:** `DELETE`
@@ -167,5 +169,62 @@ Digunakan untuk menghapus data penduduk secara permanen dari database.
 {
   "success": true,
   "message": "Data penduduk berhasil dihapus."
+}
+```
+
+---
+
+## 6. Mengunggah / Memperbarui Foto Penduduk (MinIO Object Storage)
+Digunakan untuk mengunggah pasfoto penduduk atau mengganti foto yang sudah ada. Jika penduduk sebelumnya sudah memiliki foto, file foto lama di MinIO akan otomatis dihapus dan digantikan oleh file baru.
+
+*   **URL:** `/api/penduduk/:id/foto`
+*   **Method:** `POST`
+*   **URL Params:** `id` (UUID penduduk)
+*   **Headers:** `Content-Type: multipart/form-data`
+*   **Form Field:**
+    *   `file` (File binary gambar): Format yang didukung adalah `image/jpeg`, `image/png`, `image/webp` dengan ukuran maksimal 5MB.
+
+**Response Sukses (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Foto penduduk berhasil diunggah.",
+  "data": {
+    "id": "e4a2f8b1-3c9d-4e2b-8a5f-7c1e3d2a1b0c",
+    "namaLengkap": "Budi Santoso",
+    "foto": "penduduk/e4a2f8b1-3c9d-4e2b-8a5f-7c1e3d2a1b0c-1755850000000.png",
+    "fotoUrl": "http://localhost:9000/kependudukan/penduduk/e4a2f8b1-3c9d-4e2b-8a5f-7c1e3d2a1b0c-1755850000000.png"
+  }
+}
+```
+
+**Response Gagal (400 Bad Request):**
+```json
+{
+  "success": false,
+  "message": "Format file tidak didukung. Harap unggah gambar JPG, PNG, atau WebP."
+}
+```
+
+---
+
+## 7. Menghapus Foto Penduduk
+Digunakan untuk menghapus file foto penduduk dari MinIO dan mengosongkan nilai kolom `foto` di database menjadi `null`.
+
+*   **URL:** `/api/penduduk/:id/foto`
+*   **Method:** `DELETE`
+*   **URL Params:** `id` (UUID penduduk)
+
+**Response Sukses (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Foto penduduk berhasil dihapus.",
+  "data": {
+    "id": "e4a2f8b1-3c9d-4e2b-8a5f-7c1e3d2a1b0c",
+    "namaLengkap": "Budi Santoso",
+    "foto": null,
+    "fotoUrl": null
+  }
 }
 ```
