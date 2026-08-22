@@ -28,16 +28,10 @@ async function main() {
     );
   });
 
-  // 2 & 3. Middleware Protection & Login Tests
   await runAuthTests(client, runner);
-
-  // 4. CRUD Penduduk Tests
   await runPendudukTests(client, runner);
-
-  // 5. Logout & Invalidation Tests
   await runSignOutTests(client, runner);
 
-  // Print Final Summary
   runner.printSummary();
 }
 
