@@ -22,21 +22,20 @@ export async function initMinioBucket() {
     if (!exists) {
       await minioClient.makeBucket(BUCKET_NAME, "us-east-1");
       console.log(`[MinIO] Bucket '${BUCKET_NAME}' berhasil dibuat.`);
-
-      const policy = {
-        Version: "2012-10-17",
-        Statement: [
-          {
-            Effect: "Allow",
-            Principal: { AWS: ["*"] },
-            Action: ["s3:GetObject"],
-            Resource: [`arn:aws:s3:::${BUCKET_NAME}/*`],
-          },
-        ],
-      };
-      await minioClient.setBucketPolicy(BUCKET_NAME, JSON.stringify(policy));
-      console.log(`[MinIO] Public Read Policy untuk '${BUCKET_NAME}' berhasil diterapkan.`);
     }
+
+    const policy = {
+      Version: "2012-10-17",
+      Statement: [
+        {
+          Effect: "Allow",
+          Principal: "*",
+          Action: ["s3:GetObject"],
+          Resource: [`arn:aws:s3:::${BUCKET_NAME}/*`],
+        },
+      ],
+    };
+    await minioClient.setBucketPolicy(BUCKET_NAME, JSON.stringify(policy));
   } catch (error) {
     console.error("[MinIO] Gagal menginisialisasi bucket MinIO:", error);
   }
