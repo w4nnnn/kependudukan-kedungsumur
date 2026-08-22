@@ -6,6 +6,7 @@ import { Loader2, ArrowLeft, User, MapPin, Calendar, Briefcase, FileText, Mosque
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { authClient } from "@/lib/auth-client"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -25,6 +26,20 @@ interface Penduduk {
   agama: string
   statusPerkawinan: string
   pekerjaan: string
+  foto?: string | null
+  fotoUrl?: string | null
+}
+
+function getInitials(name: string) {
+  return (
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "P"
+  )
 }
 
 export default function DetailPendudukPage() {
@@ -121,18 +136,26 @@ export default function DetailPendudukPage() {
                 <CardTitle>Identitas Utama</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="grid gap-6 pt-6 md:grid-cols-2">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Nomor Induk Kependudukan (NIK)</p>
-                <p className="text-lg font-mono">{data.nik}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Nomor Kartu Keluarga (KK)</p>
-                <p className="text-lg font-mono">{data.noKk}</p>
-              </div>
-              <div className="space-y-1 md:col-span-2">
-                <p className="text-sm font-medium text-muted-foreground">Nama Lengkap</p>
-                <p className="text-xl font-semibold uppercase">{data.namaLengkap}</p>
+            <CardContent className="flex flex-col sm:flex-row gap-6 pt-6 items-center sm:items-start">
+              <Avatar className="size-24 sm:size-28 rounded-2xl shrink-0 border shadow-sm">
+                {data.fotoUrl ? (
+                  <AvatarImage src={data.fotoUrl} alt={data.namaLengkap} className="rounded-2xl object-cover" />
+                ) : null}
+                <AvatarFallback className="rounded-2xl text-2xl font-semibold">{getInitials(data.namaLengkap)}</AvatarFallback>
+              </Avatar>
+              <div className="grid gap-6 flex-1 w-full sm:grid-cols-2">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Nomor Induk Kependudukan (NIK)</p>
+                  <p className="text-lg font-mono">{data.nik}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Nomor Kartu Keluarga (KK)</p>
+                  <p className="text-lg font-mono">{data.noKk}</p>
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <p className="text-sm font-medium text-muted-foreground">Nama Lengkap</p>
+                  <p className="text-xl font-semibold uppercase">{data.namaLengkap}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
