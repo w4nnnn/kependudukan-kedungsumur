@@ -411,7 +411,7 @@ export default function EditPenggunaPage() {
           <Card>
             <CardHeader className="border-b pb-4">
               <div className="flex items-center gap-2">
-                <User className="h-5 w-5 text-primary" />
+                <User className="h-5 w-5" />
                 <div>
                   <CardTitle>Profil & Hak Akses</CardTitle>
                   <CardDescription>
@@ -483,7 +483,7 @@ export default function EditPenggunaPage() {
           <Card>
             <CardHeader className="border-b pb-4">
               <div className="flex items-center gap-2">
-                <KeyRound className="h-5 w-5 text-primary" />
+                <KeyRound className="h-5 w-5" />
                 <div>
                   <CardTitle>Ubah Kata Sandi (Password)</CardTitle>
                   <CardDescription>
@@ -627,7 +627,7 @@ export default function EditPenggunaPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-6 flex items-center justify-between">
+            <CardContent className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-sm text-foreground">Hapus Akun Pengguna Ini</p>
                 <p className="text-xs text-muted-foreground">
