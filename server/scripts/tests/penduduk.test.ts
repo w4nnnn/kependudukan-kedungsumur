@@ -152,6 +152,38 @@ export async function runPendudukTests(client: TestClient, runner: TestRunner) {
     assertEqual(res.body.data.nik, dummyPenduduk.nik, "data.nik (tidak berubah)");
   });
 
+  await runner.step("POST /api/penduduk/:id/foto (Upload Foto Penduduk)", async () => {
+    const fakeImageBuffer = Buffer.from("GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;");
+    const formData = new FormData();
+    formData.append("file", new Blob([fakeImageBuffer], { type: "image/png" }), "pasfoto.png");
+
+    const authHeaders = client.getAuthHeaders(false);
+    const res = await client.request(`/api/penduduk/${createdPendudukId}/foto`, {
+      method: "POST",
+      headers: authHeaders,
+      body: formData,
+    });
+
+    assertEqual(res.status, 200, "HTTP Status Upload Foto");
+    assertEqual(res.body.success, true, "upload.success");
+    assertEqual(res.body.message, "Foto penduduk berhasil diunggah.", "upload.message");
+    assertType(res.body.data.foto, "string", "data.foto key");
+    assertType(res.body.data.fotoUrl, "string", "data.fotoUrl");
+    assert(res.body.data.fotoUrl.includes(res.body.data.foto), "fotoUrl harus memuat foto key");
+  });
+
+  await runner.step("DELETE /api/penduduk/:id/foto (Hapus Foto Penduduk)", async () => {
+    const res = await client.request(`/api/penduduk/${createdPendudukId}/foto`, {
+      method: "DELETE",
+      headers: client.getAuthHeaders(false),
+    });
+
+    assertEqual(res.status, 200, "HTTP Status Delete Foto");
+    assertEqual(res.body.success, true, "deleteFoto.success");
+    assertEqual(res.body.data.foto, null, "data.foto null");
+    assertEqual(res.body.data.fotoUrl, null, "data.fotoUrl null");
+  });
+
   await runner.step("PUT /api/penduduk/:id (Update ID Tidak Ada -> Expect 404)", async () => {
     const nonExistentId = "ffffffff-ffff-ffff-ffff-ffffffffffff";
     const res = await client.request(`/api/penduduk/${nonExistentId}`, {
