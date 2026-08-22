@@ -16,9 +16,6 @@ export const minioClient = new Minio.Client({
   secretKey,
 });
 
-/**
- * Inisialisasi bucket MinIO dan set policy agar foto dapat diakses publik/dibaca browser
- */
 export async function initMinioBucket() {
   try {
     const exists = await minioClient.bucketExists(BUCKET_NAME);
@@ -26,7 +23,6 @@ export async function initMinioBucket() {
       await minioClient.makeBucket(BUCKET_NAME, "us-east-1");
       console.log(`[MinIO] Bucket '${BUCKET_NAME}' berhasil dibuat.`);
 
-      // Atur Read-Only policy publik untuk prefix penduduk/
       const policy = {
         Version: "2012-10-17",
         Statement: [
@@ -46,9 +42,6 @@ export async function initMinioBucket() {
   }
 }
 
-/**
- * Upload buffer foto penduduk ke MinIO
- */
 export async function uploadFotoPenduduk(
   pendudukId: string,
   buffer: Buffer,
@@ -65,9 +58,6 @@ export async function uploadFotoPenduduk(
   return objectKey;
 }
 
-/**
- * Hapus file foto dari MinIO berdasarkan objectKey
- */
 export async function deleteFotoPenduduk(objectKey: string): Promise<void> {
   if (!objectKey) return;
   try {
@@ -77,9 +67,6 @@ export async function deleteFotoPenduduk(objectKey: string): Promise<void> {
   }
 }
 
-/**
- * Mendapatkan URL publik foto dari objectKey
- */
 export function getPublicFotoUrl(objectKey: string | null | undefined): string | null {
   if (!objectKey) return null;
   const publicBaseUrl = process.env.MINIO_PUBLIC_URL || `http://${endPoint}:${port}/${BUCKET_NAME}`;

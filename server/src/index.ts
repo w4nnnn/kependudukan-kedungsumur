@@ -1,8 +1,10 @@
 import fastify from "fastify";
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import "dotenv/config";
 import authRoutes from "./routes/auth.routes.js";
 import pendudukRoutes from "./routes/penduduk.routes.js";
+import { initMinioBucket } from "./lib/minio.js";
 
 const app = fastify({
   logger: {
@@ -22,6 +24,13 @@ app.register(cors, {
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
 });
 
+app.register(multipart, {
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    files: 1,
+  },
+});
+
 app.register(authRoutes);
 app.register(pendudukRoutes);
 
@@ -31,6 +40,8 @@ app.get("/", async (request, reply) => {
 
 const start = async () => {
   try {
+    await initMinioBucket();
+
     const port = parseInt(process.env.PORT || "3000", 10);
     
     await app.listen({ port, host: "0.0.0.0" });
