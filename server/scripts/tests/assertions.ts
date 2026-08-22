@@ -113,6 +113,14 @@ export function validatePendudukSchema(item: any, contextName = "data") {
     assertType(item.pekerjaan, "string", `${contextName}.pekerjaan`);
   }
 
+  if (item.foto !== null && item.foto !== undefined) {
+    assertType(item.foto, "string", `${contextName}.foto`);
+  }
+
+  if (item.fotoUrl !== null && item.fotoUrl !== undefined) {
+    assertType(item.fotoUrl, "string", `${contextName}.fotoUrl`);
+  }
+
   if (item.nikHash) {
     assertType(item.nikHash, "string", `${contextName}.nikHash`);
     assert(item.nikHash.length === 64, `Field '${contextName}.nikHash' harus berukuran 64 karakter hash`);

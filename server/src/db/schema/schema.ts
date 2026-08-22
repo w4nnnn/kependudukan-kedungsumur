@@ -63,6 +63,7 @@ export const pendudukTable = pgTable(
     agama: varchar("agama", { length: 50 }).notNull(),
     statusPerkawinan: varchar("status_perkawinan", { length: 50 }).notNull(),
     pekerjaan: varchar("pekerjaan", { length: 100 }),
+    foto: varchar("foto", { length: 500 }),
   },
   (table) => [
     index("idx_penduduk_nama").on(table.namaLengkap),
