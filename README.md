@@ -10,10 +10,10 @@ Aplikasi modern untuk pengelolaan administrasi data penduduk desa dengan enkrips
 - [Struktur Direktori](#-struktur-direktori)
 - [Persyaratan Sistem](#-persyaratan-sistem)
 - [Panduan Instalasi & Menjalankan Aplikasi](#-panduan-instalasi--menjalankan-aplikasi)
-  - [1. Menjalankan Layanan Database & MinIO (Docker Compose)](#1-menjalankan-layanan-database--minio-docker-compose)
-  - [2. Konfigurasi Environment Variable](#2-konfigurasi-environment-variable)
-  - [3. Menjalankan Backend Server (Fastify)](#3-menjalankan-backend-server-fastify)
-  - [4. Menjalankan Frontend Web (Next.js)](#4-menjalankan-frontend-web-nextjs)
+  - [1. Konfigurasi Environment Variables](#1-konfigurasi-environment-variables)
+  - [2. Setup & Menjalankan Backend Server](#2-setup--menjalankan-backend-server)
+  - [3. Setup & Menjalankan Frontend Web](#3-setup--menjalankan-frontend-web)
+- [Menjalankan Production dengan PM2](#-menjalankan-production-dengan-pm2)
 - [Testing & Validasi API](#-testing--validasi-api)
 - [Dokumentasi API](#-dokumentasi-api)
 
@@ -21,7 +21,7 @@ Aplikasi modern untuk pengelolaan administrasi data penduduk desa dengan enkrips
 
 ## ✨ Fitur Utama
 
-1. **Keamanan Data Penduduk (Enkripsi & Hashing):**
+1. **Keamanan Data Penduduk (Enkripsi & Blind Indexing):**
    - NIK dan Nomor KK dienkripsi secara simetris menggunakan **AES-256-GCM** sebelum disimpan di database PostgreSQL.
    - Menggunakan teknik **Blind Indexing (HMAC/SHA-256 dengan Salt)** untuk pencarian presisi NIK & KK tanpa membuka dekripsi seluruh tabel.
 2. **Manajemen Pasfoto Penduduk (MinIO Object Storage):**
@@ -41,7 +41,8 @@ Aplikasi modern untuk pengelolaan administrasi data penduduk desa dengan enkrips
 
 - **Backend:** Node.js, Fastify v5, TypeScript, Drizzle ORM, Better Auth, MinIO Node SDK, `@fastify/multipart`.
 - **Frontend:** Next.js 16 (App Router), React 19, Tailwind CSS v4, Radix UI & Base UI, React Hook Form + Zod, Sonner Toast, Lucide Icons.
-- **Infrastruktur & Database:** PostgreSQL 16, MinIO S3 Object Storage, Docker & Docker Compose.
+- **Database & Storage:** PostgreSQL 16, MinIO S3 Object Storage.
+- **Process Manager:** PM2 (`ecosystem.config.cjs`).
 
 ---
 
@@ -49,7 +50,7 @@ Aplikasi modern untuk pengelolaan administrasi data penduduk desa dengan enkrips
 
 ```text
 kependudukan-kedungsumur/
-├── docker-compose.yml          # Konfigurasi container PostgreSQL & MinIO
+├── ecosystem.config.cjs        # Konfigurasi PM2 Process Manager
 ├── docs/                       # Dokumentasi API & Spesifikasi Desain
 │   ├── api/
 │   │   ├── auth.md             # Dokumentasi API Autentikasi
@@ -75,31 +76,18 @@ kependudukan-kedungsumur/
 ## 📋 Persyaratan Sistem
 
 - **Node.js:** Versi 20.x atau lebih baru
-- **Docker & Docker Compose:** Versi terbaru
-- **NPM:** Versi 10.x atau lebih baru
+- **PostgreSQL Database:** Berjalan di port 5432
+- **MinIO Storage Server:** Berjalan di port 9000 (API) dan 9001 (Console)
+- **PM2:** `npm install -g pm2` (untuk deployment production)
 
 ---
 
 ## 🚀 Panduan Instalasi & Menjalankan Aplikasi
 
-### 1. Menjalankan Layanan Database & MinIO (Docker Compose)
-Jalankan container PostgreSQL dan MinIO dari direktori root proyek:
-
-```bash
-docker compose up -d
-```
-
-Layanan yang akan aktif:
-- **PostgreSQL:** `localhost:5432` (User: `admin`, Password: `admin123`, DB: `kependudukan-kedungsumur`)
-- **MinIO API:** `http://localhost:9000` (Access Key: `admin`, Secret Key: `admin123`)
-- **MinIO Console UI:** `http://localhost:9001` (Dashboard web untuk melihat bucket & file)
-
----
-
-### 2. Konfigurasi Environment Variable
+### 1. Konfigurasi Environment Variables
 
 #### Backend (`server/.env`):
-Salin `server/.env.example` ke `server/.env` dan pastikan nilainya sesuai:
+Salin `server/.env.example` ke `server/.env` dan sesuaikan nilainya:
 ```env
 PORT=4000
 DATABASE_URL=postgres://admin:admin123@localhost:5432/kependudukan-kedungsumur
@@ -123,14 +111,14 @@ TEST_ADMIN_PASSWORD=sandi_rahasia_123
 ```
 
 #### Frontend (`web/.env`):
-Pastikan `web/.env` mengarah ke backend Fastify:
+Pastikan `web/.env` mengarah ke backend API:
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:4000
 ```
 
 ---
 
-### 3. Menjalankan Backend Server (Fastify)
+### 2. Setup & Menjalankan Backend Server
 
 1. Masuk ke folder server dan install dependensi:
    ```bash
@@ -138,12 +126,12 @@ NEXT_PUBLIC_API_URL=http://localhost:4000
    npm install
    ```
 
-2. Jalankan migrasi schema database Drizzle ke PostgreSQL:
+2. Jalankan sinkronisasi / migrasi skema database Drizzle:
    ```bash
    npx drizzle-kit push
    ```
 
-3. Buat akun Administrator pertama:
+3. Buat akun Administrator:
    ```bash
    npm run create-admin
    ```
@@ -156,9 +144,9 @@ NEXT_PUBLIC_API_URL=http://localhost:4000
 
 ---
 
-### 4. Menjalankan Frontend Web (Next.js)
+### 3. Setup & Menjalankan Frontend Web
 
-1. Buka terminal baru, masuk ke folder web dan install dependensi:
+1. Masuk ke folder web dan install dependensi:
    ```bash
    cd web
    npm install
@@ -168,7 +156,30 @@ NEXT_PUBLIC_API_URL=http://localhost:4000
    ```bash
    npm run dev
    ```
-   *Buka browser di `http://localhost:3000`.*
+   *Aplikasi web dapat diakses di `http://localhost:3000`.*
+
+---
+
+## ⚡ Menjalankan Production dengan PM2
+
+Untuk menjalankan seluruh layanan (Backend Fastify & Frontend Next.js) secara bersamaan di server production menggunakan PM2:
+
+1. **Build kedua aplikasi terlebih dahulu:**
+   ```bash
+   npm --prefix server run build
+   npm --prefix web run build
+   ```
+
+2. **Jalankan dengan PM2 Ecosystem:**
+   ```bash
+   pm2 start ecosystem.config.cjs
+   ```
+
+3. **Perintah PM2 yang berguna:**
+   - Melihat status aplikasi: `pm2 status`
+   - Melihat realtime logs: `pm2 logs`
+   - Restart seluruh aplikasi: `pm2 restart all`
+   - Berhenti: `pm2 stop all`
 
 ---
 
