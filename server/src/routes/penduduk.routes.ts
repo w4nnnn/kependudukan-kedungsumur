@@ -3,9 +3,19 @@ import { db } from "../db/index.js";
 import { pendudukTable, hashKependudukan } from "../db/schema/schema.js";
 import { eq, ilike, and, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth.middleware.js";
+import { uploadFotoPenduduk, deleteFotoPenduduk, getPublicFotoUrl } from "../lib/minio.js";
+import path from "path";
 
 type PendudukInsert = typeof pendudukTable.$inferInsert;
 type ParamsWithId = { id: string };
+
+function withFotoUrl<T extends { foto?: string | null }>(item: T | undefined | null) {
+  if (!item) return null;
+  return {
+    ...item,
+    fotoUrl: getPublicFotoUrl(item.foto),
+  };
+}
 
 export default async function pendudukRoutes(fastify: FastifyInstance) {
   
@@ -49,7 +59,7 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
 
       return reply.send({ 
         success: true, 
-        data,
+        data: data.map(withFotoUrl),
         meta: {
           total,
           page: Number(page),
@@ -67,12 +77,13 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params;
       const data = await db.select().from(pendudukTable).where(eq(pendudukTable.id, id));
+      const record = data[0];
       
-      if (data.length === 0) {
+      if (!record) {
         return reply.status(404).send({ success: false, message: "Data penduduk tidak ditemukan." });
       }
 
-      return reply.send({ success: true, data: data[0] });
+      return reply.send({ success: true, data: withFotoUrl(record) });
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send({ success: false, message: "Gagal mengambil data." });
@@ -90,11 +101,15 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
       };
       
       const newData = await db.insert(pendudukTable).values(newPendudukData).returning();
+      const created = newData[0];
+      if (!created) {
+        return reply.status(500).send({ success: false, message: "Gagal menyimpan data." });
+      }
       
       return reply.status(201).send({ 
         success: true, 
         message: "Data penduduk berhasil ditambahkan.",
-        data: newData[0]
+        data: withFotoUrl(created)
       });
     } catch (error: any) {
       fastify.log.error(error);
@@ -125,14 +140,15 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
         .where(eq(pendudukTable.id, id))
         .returning();
 
-      if (updatedData.length === 0) {
+      const updated = updatedData[0];
+      if (!updated) {
         return reply.status(404).send({ success: false, message: "Data penduduk tidak ditemukan." });
       }
 
       return reply.send({ 
         success: true, 
         message: "Data penduduk berhasil diperbarui.",
-        data: updatedData[0] 
+        data: withFotoUrl(updated) 
       });
     } catch (error: any) {
       fastify.log.error(error);
@@ -149,13 +165,98 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
     }
   });
 
+  fastify.post<{ Params: ParamsWithId }>("/api/penduduk/:id/foto", async (request, reply) => {
+    try {
+      const { id } = request.params;
+
+      const existing = await db.select().from(pendudukTable).where(eq(pendudukTable.id, id));
+      const current = existing[0];
+      if (!current) {
+        return reply.status(404).send({ success: false, message: "Data penduduk tidak ditemukan." });
+      }
+
+      const file = await request.file();
+      if (!file) {
+        return reply.status(400).send({ success: false, message: "File foto wajib diunggah." });
+      }
+
+      const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+      if (!allowedMimeTypes.includes(file.mimetype)) {
+        return reply.status(400).send({
+          success: false,
+          message: "Format file tidak didukung. Harap unggah gambar JPG, PNG, atau WebP.",
+        });
+      }
+
+      const buffer = await file.toBuffer();
+      const ext = path.extname(file.filename) || (file.mimetype === "image/png" ? ".png" : file.mimetype === "image/webp" ? ".webp" : ".jpg");
+
+      if (current.foto) {
+        await deleteFotoPenduduk(current.foto);
+      }
+
+      const objectKey = await uploadFotoPenduduk(id, buffer, file.mimetype, ext);
+
+      const updated = await db
+        .update(pendudukTable)
+        .set({ foto: objectKey })
+        .where(eq(pendudukTable.id, id))
+        .returning();
+
+      return reply.send({
+        success: true,
+        message: "Foto penduduk berhasil diunggah.",
+        data: withFotoUrl(updated[0]),
+      });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send({ success: false, message: "Gagal mengunggah foto penduduk." });
+    }
+  });
+
+  fastify.delete<{ Params: ParamsWithId }>("/api/penduduk/:id/foto", async (request, reply) => {
+    try {
+      const { id } = request.params;
+
+      const existing = await db.select().from(pendudukTable).where(eq(pendudukTable.id, id));
+      const current = existing[0];
+      if (!current) {
+        return reply.status(404).send({ success: false, message: "Data penduduk tidak ditemukan." });
+      }
+
+      if (current.foto) {
+        await deleteFotoPenduduk(current.foto);
+      }
+
+      const updated = await db
+        .update(pendudukTable)
+        .set({ foto: null })
+        .where(eq(pendudukTable.id, id))
+        .returning();
+
+      return reply.send({
+        success: true,
+        message: "Foto penduduk berhasil dihapus.",
+        data: withFotoUrl(updated[0]),
+      });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send({ success: false, message: "Gagal menghapus foto penduduk." });
+    }
+  });
+
   fastify.delete<{ Params: ParamsWithId }>("/api/penduduk/:id", async (request, reply) => {
     try {
       const { id } = request.params;
       const deletedData = await db.delete(pendudukTable).where(eq(pendudukTable.id, id)).returning();
+      const deleted = deletedData[0];
 
-      if (deletedData.length === 0) {
+      if (!deleted) {
         return reply.status(404).send({ success: false, message: "Data penduduk tidak ditemukan." });
+      }
+
+      if (deleted.foto) {
+        await deleteFotoPenduduk(deleted.foto);
       }
 
       return reply.send({ success: true, message: "Data penduduk berhasil dihapus." });
