@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { toast } from "sonner"
 
 interface Penduduk {
@@ -50,6 +51,20 @@ interface Penduduk {
   agama: string
   statusPerkawinan: string
   pekerjaan: string
+  foto?: string | null
+  fotoUrl?: string | null
+}
+
+function getInitials(name: string) {
+  return (
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "P"
+  )
 }
 
 export default function KependudukanPage() {
@@ -255,7 +270,17 @@ export default function KependudukanPage() {
                       {dataPenduduk.map((penduduk) => (
                         <TableRow key={penduduk.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/kependudukan/${penduduk.id}`)}>
                           <TableCell className="font-mono text-sm">{penduduk.nik}</TableCell>
-                          <TableCell className="font-medium">{penduduk.namaLengkap}</TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-3">
+                              <Avatar size="sm">
+                                {penduduk.fotoUrl ? (
+                                  <AvatarImage src={penduduk.fotoUrl} alt={penduduk.namaLengkap} />
+                                ) : null}
+                                <AvatarFallback>{getInitials(penduduk.namaLengkap)}</AvatarFallback>
+                              </Avatar>
+                              <span>{penduduk.namaLengkap}</span>
+                            </div>
+                          </TableCell>
                           <TableCell>
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground border">
                               {penduduk.jenisKelamin}
