@@ -16,6 +16,7 @@ import {
   User,
   Ban,
   CheckCircle2,
+  MapPin,
 } from "lucide-react"
 import { format } from "date-fns"
 import { id as localeId } from "date-fns/locale"
@@ -51,6 +52,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 
 interface AppUser {
@@ -60,6 +62,8 @@ interface AppUser {
   username?: string | null
   displayUsername?: string | null
   role?: string | null
+  rt?: string | null
+  rw?: string | null
   banned?: boolean | null
   banReason?: string | null
   createdAt?: string | Date
@@ -72,6 +76,8 @@ export default function PenggunaPage() {
   const [dataUsers, setDataUsers] = useState<AppUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedRt, setSelectedRt] = useState<string>("ALL")
+  const [selectedRw, setSelectedRw] = useState<string>("ALL")
   const [currentPage, setCurrentPage] = useState(1)
   const [totalData, setTotalData] = useState(0)
   const limit = 10
@@ -97,8 +103,8 @@ export default function PenggunaPage() {
     try {
       const offset = (page - 1) * limit
       const queryParams: Record<string, string | number> = {
-        limit,
-        offset,
+        limit: 100,
+        offset: 0,
       }
 
       if (search.trim()) {
@@ -111,8 +117,18 @@ export default function PenggunaPage() {
       })
 
       if (res.data) {
-        setDataUsers(res.data.users as AppUser[])
-        setTotalData(res.data.total ?? 0)
+        let users = (res.data.users as AppUser[]) || []
+        
+        if (selectedRt !== "ALL") {
+          users = users.filter(u => u.rt === selectedRt)
+        }
+        if (selectedRw !== "ALL") {
+          users = users.filter(u => u.rw === selectedRw)
+        }
+
+        setTotalData(users.length)
+        const startIndex = (page - 1) * limit
+        setDataUsers(users.slice(startIndex, startIndex + limit))
       } else if (res.error) {
         toast.error("Gagal memuat data pengguna", {
           description: res.error.message || "Pastikan Anda memiliki hak akses admin.",
@@ -132,7 +148,7 @@ export default function PenggunaPage() {
     if (session) {
       fetchUsers(searchQuery, currentPage)
     }
-  }, [session, currentPage])
+  }, [session, currentPage, selectedRt, selectedRw])
 
   useEffect(() => {
     if (!session) return
@@ -207,17 +223,51 @@ export default function PenggunaPage() {
 
         {/* Card Tabel Pengguna */}
         <Card className="shadow-sm overflow-hidden">
-          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-4 border-b">
+          <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between pb-4 border-b">
             <CardTitle className="flex items-center gap-2">
               <span>Daftar Pengguna</span>
             </CardTitle>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center w-full sm:w-auto">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center flex-wrap">
+              {/* Filter RT */}
+              <div className="w-full sm:w-28">
+                <Select value={selectedRt} onValueChange={(val) => { setSelectedRt(val || "ALL"); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="RT" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Semua RT</SelectItem>
+                    <SelectItem value="001">RT 001</SelectItem>
+                    <SelectItem value="002">RT 002</SelectItem>
+                    <SelectItem value="003">RT 003</SelectItem>
+                    <SelectItem value="004">RT 004</SelectItem>
+                    <SelectItem value="005">RT 005</SelectItem>
+                    <SelectItem value="006">RT 006</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Filter RW */}
+              <div className="w-full sm:w-28">
+                <Select value={selectedRw} onValueChange={(val) => { setSelectedRw(val || "ALL"); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="RW" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Semua RW</SelectItem>
+                    <SelectItem value="001">RW 001</SelectItem>
+                    <SelectItem value="002">RW 002</SelectItem>
+                    <SelectItem value="003">RW 003</SelectItem>
+                    <SelectItem value="004">RW 004</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="relative group w-full sm:w-auto">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors" />
                 <Input
                   type="search"
                   placeholder="Cari nama atau email..."
-                  className="w-full pl-9 sm:w-72 transition-all rounded-lg"
+                  className="w-full pl-9 sm:w-64 transition-all rounded-lg"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -253,6 +303,7 @@ export default function PenggunaPage() {
                       <TableRow>
                         <TableHead className="font-medium h-12">Nama & Email</TableHead>
                         <TableHead className="font-medium h-12">Username</TableHead>
+                        <TableHead className="font-medium h-12">Wilayah RT/RW</TableHead>
                         <TableHead className="font-medium h-12">Peran (Role)</TableHead>
                         <TableHead className="font-medium h-12">Status</TableHead>
                         <TableHead className="font-medium h-12">Terdaftar Pada</TableHead>
@@ -287,6 +338,16 @@ export default function PenggunaPage() {
                             </TableCell>
                             <TableCell className="font-mono text-xs">
                               {user.username || user.displayUsername || "-"}
+                            </TableCell>
+                            <TableCell>
+                              {user.rt || user.rw ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground border">
+                                  <MapPin className="size-3 text-primary" />
+                                  RT {user.rt || "-"} / RW {user.rw || "-"}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">Semua Wilayah</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               {isAdmin ? (

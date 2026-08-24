@@ -55,6 +55,8 @@ const profileSchema = z.object({
   name: z.string().min(3, "Nama lengkap minimal 3 karakter"),
   email: z.string().email("Format email tidak valid"),
   role: z.enum(["admin", "user"]),
+  rt: z.string().optional(),
+  rw: z.string().optional(),
 })
 
 type ProfileFormValues = z.infer<typeof profileSchema>
@@ -79,6 +81,8 @@ interface UserDetail {
   username?: string | null
   displayUsername?: string | null
   role?: string | null
+  rt?: string | null
+  rw?: string | null
   banned?: boolean | null
   banReason?: string | null
   createdAt?: string | Date
@@ -153,6 +157,8 @@ export default function EditPenggunaPage() {
             name: found.name,
             email: found.email,
             role: (found.role as "admin" | "user") || "user",
+            rt: found.rt || "",
+            rw: found.rw || "",
           })
           setBanReasonInput(found.banReason || "")
         } else {
@@ -190,13 +196,14 @@ export default function EditPenggunaPage() {
     setIsSavingProfile(true)
 
     try {
-      // Update User Name & Email
       const updateRes = await authClient.admin.updateUser({
         userId,
         data: {
           name: values.name,
           email: values.email.toLowerCase(),
           role: values.role,
+          rt: values.rt || null,
+          rw: values.rw || null,
         },
       })
 
@@ -462,6 +469,24 @@ export default function EditPenggunaPage() {
                         Anda tidak dapat mengubah peran akun Anda sendiri.
                       </p>
                     )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Wilayah RT Tugas (Opsional)</label>
+                    <Input
+                      placeholder="Contoh: 001"
+                      maxLength={3}
+                      {...registerProfile("rt")}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Wilayah RW Tugas (Opsional)</label>
+                    <Input
+                      placeholder="Contoh: 002"
+                      maxLength={3}
+                      {...registerProfile("rw")}
+                    />
                   </div>
                 </div>
 

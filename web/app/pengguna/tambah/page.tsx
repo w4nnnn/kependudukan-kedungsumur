@@ -39,6 +39,8 @@ const userSchema = z.object({
   role: z.enum(["admin", "user"], {
     required_error: "Pilih peran (role) pengguna",
   }),
+  rt: z.string().optional(),
+  rw: z.string().optional(),
 })
 
 type UserFormValues = z.infer<typeof userSchema>
@@ -61,6 +63,8 @@ export default function TambahPenggunaPage() {
       email: "",
       password: "",
       role: "user",
+      rt: "",
+      rw: "",
     },
   })
 
@@ -75,6 +79,8 @@ export default function TambahPenggunaPage() {
         role: data.role,
         data: {
           username: data.username.toLowerCase(),
+          rt: data.rt || null,
+          rw: data.rw || null,
         },
       })
 
@@ -205,6 +211,25 @@ export default function TambahPenggunaPage() {
                   {errors.role && (
                     <p className="text-sm text-destructive">{errors.role.message}</p>
                   )}
+                </div>
+
+                {/* RT & RW Tugas (Opsional) */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Wilayah RT Tugas (Opsional)</label>
+                  <Input
+                    placeholder="Contoh: 001"
+                    maxLength={3}
+                    {...register("rt")}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Wilayah RW Tugas (Opsional)</label>
+                  <Input
+                    placeholder="Contoh: 002"
+                    maxLength={3}
+                    {...register("rw")}
+                  />
                 </div>
               </div>
 

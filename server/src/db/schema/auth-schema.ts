@@ -9,6 +9,8 @@ export const user = pgTable("user", {
   displayUsername: text("display_username"),
   emailVerified: boolean("email_verified").default(false).notNull(),
   role: text("role").default("admin").notNull(),
+  rt: text("rt"),
+  rw: text("rw"),
   banned: boolean("banned").default(false), // Tambahan untuk plugin admin
   banReason: text("ban_reason"), // Tambahan untuk plugin admin
   banExpires: timestamp("ban_expires"), // Tambahan untuk plugin admin

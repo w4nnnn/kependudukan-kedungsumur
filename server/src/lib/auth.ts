@@ -9,6 +9,20 @@ export const auth = betterAuth({
         provider: "pg",
         schema: authSchema, // Berikan schema ke adapter
     }),
+    user: {
+        additionalFields: {
+            rt: {
+                type: "string",
+                required: false,
+                input: true,
+            },
+            rw: {
+                type: "string",
+                required: false,
+                input: true,
+            },
+        },
+    },
     emailAndPassword: {
         enabled: true,
     },
