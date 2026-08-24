@@ -1,6 +1,12 @@
+import type { Metadata } from "next"
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ThemeToggle } from "@/components/theme-provider"
+
+export const metadata: Metadata = {
+  title: "Manajemen Pengguna",
+  description: "Pengaturan akun operator dan administrator sistem",
+}
 
 export default function PenggunaLayout({
   children,

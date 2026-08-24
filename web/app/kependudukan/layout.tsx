@@ -1,8 +1,14 @@
+import type { Metadata } from "next"
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ThemeToggle } from "@/components/theme-provider"
 
-export default function DashboardLayout({
+export const metadata: Metadata = {
+  title: "Data Penduduk",
+  description: "Pengelolaan dan administrasi data kependudukan Desa Kedungsumur",
+}
+
+export default function KependudukanLayout({
   children,
 }: {
   children: React.ReactNode

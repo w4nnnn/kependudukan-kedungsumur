@@ -71,10 +71,7 @@ export default function LoginPage() {
       </div>
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">Login Sistem</CardTitle>
-          <CardDescription className="text-center">
-            Masukkan username dan password Anda untuk masuk ke sistem kependudukan.
-          </CardDescription>
+          <CardTitle className="text-2xl text-center">Login</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
