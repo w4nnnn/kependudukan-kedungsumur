@@ -42,11 +42,33 @@ export function hashKependudukan(value: string) {
   return createHash("sha256").update(value + salt).digest("hex");
 }
 
+export const kartuKeluargaTable = pgTable(
+  "kartu_keluarga",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    noKk: encryptedVarchar("no_kk").notNull(),
+    noKkHash: varchar("no_kk_hash", { length: 64 }).notNull().unique(),
+    kepalaKeluargaId: uuid("kepala_keluarga_id"),
+    alamat: varchar("alamat", { length: 255 }).notNull(),
+    rt: varchar("rt", { length: 5 }).notNull(),
+    rw: varchar("rw", { length: 5 }).notNull(),
+    dusun: varchar("dusun", { length: 100 }),
+    kodePos: varchar("kode_pos", { length: 10 }),
+    tanggalDikeluarkan: date("tanggal_dikeluarkan"),
+  },
+  (table) => [
+    index("idx_kk_nokk_hash").on(table.noKkHash),
+    index("idx_kk_rt_rw").on(table.rt, table.rw),
+  ]
+);
+
 export const pendudukTable = pgTable(
   "penduduk",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     
+    kartuKeluargaId: uuid("kartu_keluarga_id").references(() => kartuKeluargaTable.id, { onDelete: "set null" }),
+
     nik: encryptedVarchar("nik").notNull(),
     nikHash: varchar("nik_hash", { length: 64 }).notNull().unique(), 
 
@@ -62,6 +84,12 @@ export const pendudukTable = pgTable(
     rw: varchar("rw", { length: 5 }).notNull(),
     agama: varchar("agama", { length: 50 }).notNull(),
     statusPerkawinan: varchar("status_perkawinan", { length: 50 }).notNull(),
+    shdk: varchar("shdk", { length: 50 }).notNull().default("KEPALA KELUARGA"),
+    urutanKk: varchar("urutan_kk", { length: 5 }).default("1"),
+    namaAyah: varchar("nama_ayah", { length: 255 }),
+    namaIbu: varchar("nama_ibu", { length: 255 }),
+    pendidikan: varchar("pendidikan", { length: 100 }),
+    golonganDarah: varchar("golongan_darah", { length: 5 }),
     pekerjaan: varchar("pekerjaan", { length: 100 }),
     foto: varchar("foto", { length: 500 }),
   },
@@ -69,5 +97,6 @@ export const pendudukTable = pgTable(
     index("idx_penduduk_nama").on(table.namaLengkap),
     index("idx_penduduk_rt_rw").on(table.rt, table.rw),
     index("idx_penduduk_nokk_hash").on(table.noKkHash),
+    index("idx_penduduk_kk_id").on(table.kartuKeluargaId),
   ]
 );
