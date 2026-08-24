@@ -49,4 +49,16 @@ export async function runStatsTests(client: TestClient, runner: TestRunner) {
     assertEqual(res.body.success, true, "response.success");
     assertType(res.body.data.summary.totalPenduduk, "number", "summary.totalPenduduk filter");
   });
+
+  await runner.step("GET /api/stats/pdf (Unduh Laporan Resmi Statistik PDF)", async () => {
+    const res = await client.request("/api/stats/pdf", {
+      headers: client.getAuthHeaders(false),
+    });
+
+    assertEqual(res.status, 200, "HTTP Status PDF");
+    assert(
+      res.headers.get("content-type")?.includes("application/pdf") ?? false,
+      "Content-Type harus berupa file PDF"
+    );
+  });
 }
