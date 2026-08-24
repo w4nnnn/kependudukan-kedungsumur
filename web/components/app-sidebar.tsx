@@ -28,8 +28,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }
 
   return (
-    <Sidebar collapsible="icon" {...props} className="border-r border-border/10">
-      <SidebarHeader className="py-4">
+    <Sidebar collapsible="icon" {...props} className="border-r border-sidebar-border bg-sidebar">
+      <SidebarHeader className="py-4 bg-sidebar">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="hover:bg-transparent cursor-default">
@@ -44,8 +44,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarSeparator className="bg-border/10" />
-      <SidebarContent className="px-3 py-4">
+      <SidebarSeparator className="bg-sidebar-border" />
+      <SidebarContent className="px-3 py-4 bg-sidebar">
         <SidebarMenu className="gap-2">
           <SidebarMenuItem>
             <SidebarMenuButton 
@@ -60,7 +60,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className={`rounded-xl px-3 py-2.5 transition-all duration-200 ${
                 pathname === "/dashboard"
                   ? "border-2 border-primary bg-primary/10 text-primary font-bold shadow-xs ring-2 ring-primary/20"
-                  : "border-2 border-border/60 bg-card hover:border-primary/40 hover:bg-muted/50 text-foreground"
+                  : "border-2 border-sidebar-border bg-card hover:border-primary/40 hover:bg-sidebar-accent text-sidebar-foreground"
               }`}
             />
           </SidebarMenuItem>
@@ -77,7 +77,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className={`rounded-xl px-3 py-2.5 transition-all duration-200 ${
                 pathname.startsWith("/kependudukan")
                   ? "border-2 border-primary bg-primary/10 text-primary font-bold shadow-xs ring-2 ring-primary/20"
-                  : "border-2 border-border/60 bg-card hover:border-primary/40 hover:bg-muted/50 text-foreground"
+                  : "border-2 border-sidebar-border bg-card hover:border-primary/40 hover:bg-sidebar-accent text-sidebar-foreground"
               }`}
             />
           </SidebarMenuItem>
@@ -94,7 +94,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className={`rounded-xl px-3 py-2.5 transition-all duration-200 ${
                 pathname.startsWith("/kk")
                   ? "border-2 border-primary bg-primary/10 text-primary font-bold shadow-xs ring-2 ring-primary/20"
-                  : "border-2 border-border/60 bg-card hover:border-primary/40 hover:bg-muted/50 text-foreground"
+                  : "border-2 border-sidebar-border bg-card hover:border-primary/40 hover:bg-sidebar-accent text-sidebar-foreground"
               }`}
             />
           </SidebarMenuItem>
@@ -111,14 +111,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className={`rounded-xl px-3 py-2.5 transition-all duration-200 ${
                 pathname.startsWith("/pengguna")
                   ? "border-2 border-primary bg-primary/10 text-primary font-bold shadow-xs ring-2 ring-primary/20"
-                  : "border-2 border-border/60 bg-card hover:border-primary/40 hover:bg-muted/50 text-foreground"
+                  : "border-2 border-sidebar-border bg-card hover:border-primary/40 hover:bg-sidebar-accent text-sidebar-foreground"
               }`}
             />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="p-3">
-        <div className="flex flex-col gap-3 p-3.5 rounded-xl border-2 border-border/60 bg-card group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:border-transparent shadow-xs">
+      <SidebarFooter className="p-3 bg-sidebar">
+        <div className="flex flex-col gap-3 p-3.5 rounded-xl border-2 border-sidebar-border bg-card group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:border-transparent shadow-xs">
           {session?.user && (
             <div className="flex flex-col gap-0.5 px-0.5 group-data-[collapsible=icon]:hidden">
               <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Masuk sebagai</span>
