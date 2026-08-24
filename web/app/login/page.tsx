@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { authClient } from "@/lib/auth-client"
+import { ThemeToggle } from "@/components/theme-provider"
 
 // Form validation schema
 const loginSchema = z.object({
@@ -64,7 +65,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex h-screen w-full items-center justify-center px-4 bg-muted/40">
+    <div className="relative flex h-screen w-full items-center justify-center px-4 bg-muted/40">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-2xl text-center">Login Sistem</CardTitle>
