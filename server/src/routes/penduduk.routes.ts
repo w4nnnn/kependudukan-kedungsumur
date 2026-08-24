@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/index.js";
-import { pendudukTable, hashKependudukan } from "../db/schema/schema.js";
+import { pendudukTable, kartuKeluargaTable, hashKependudukan } from "../db/schema/schema.js";
 import { eq, ilike, and, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 import { uploadFotoPenduduk, deleteFotoPenduduk, getPublicFotoUrl } from "../lib/minio.js";
@@ -23,7 +23,7 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
 
   fastify.get("/api/penduduk", async (request, reply) => {
     try {
-      const { search, nik, nokk, limit = 100, page = 1 } = request.query as any;
+      const { search, nik, nokk, kkId, limit = 100, page = 1 } = request.query as any;
       const offset = (Number(page) - 1) * Number(limit);
 
       let query = db.select().from(pendudukTable).$dynamic();
@@ -41,6 +41,10 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
 
       if (nokk) {
         conditions.push(eq(pendudukTable.noKkHash, hashKependudukan(nokk)));
+      }
+
+      if (kkId) {
+        conditions.push(eq(pendudukTable.kartuKeluargaId, kkId));
       }
 
       if (conditions.length > 0) {
@@ -83,7 +87,43 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ success: false, message: "Data penduduk tidak ditemukan." });
       }
 
-      return reply.send({ success: true, data: withFotoUrl(record) });
+      let kartuKeluarga = null;
+      let anggotaKeluarga: any[] = [];
+
+      if (record.kartuKeluargaId) {
+        const kkData = await db
+          .select()
+          .from(kartuKeluargaTable)
+          .where(eq(kartuKeluargaTable.id, record.kartuKeluargaId));
+        
+        if (kkData[0]) {
+          const anggota = await db
+            .select({
+              id: pendudukTable.id,
+              namaLengkap: pendudukTable.namaLengkap,
+              nik: pendudukTable.nik,
+              shdk: pendudukTable.shdk,
+              urutanKk: pendudukTable.urutanKk,
+              jenisKelamin: pendudukTable.jenisKelamin,
+              foto: pendudukTable.foto,
+            })
+            .from(pendudukTable)
+            .where(eq(pendudukTable.kartuKeluargaId, record.kartuKeluargaId))
+            .orderBy(pendudukTable.urutanKk);
+
+          kartuKeluarga = kkData[0];
+          anggotaKeluarga = anggota.map(withFotoUrl);
+        }
+      }
+
+      return reply.send({ 
+        success: true, 
+        data: {
+          ...withFotoUrl(record),
+          kartuKeluarga,
+          anggotaKeluarga,
+        }
+      });
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send({ success: false, message: "Gagal mengambil data." });
@@ -94,16 +134,37 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
     try {
       const body = request.body;
       
+      const noKkHash = hashKependudukan(body.noKk);
+
+      let kartuKeluargaId = body.kartuKeluargaId;
+      if (!kartuKeluargaId) {
+        const existingKk = await db
+          .select()
+          .from(kartuKeluargaTable)
+          .where(eq(kartuKeluargaTable.noKkHash, noKkHash));
+        if (existingKk[0]) {
+          kartuKeluargaId = existingKk[0].id;
+        }
+      }
+
       const newPendudukData = {
         ...body,
+        kartuKeluargaId,
         nikHash: hashKependudukan(body.nik),
-        noKkHash: hashKependudukan(body.noKk)
+        noKkHash: noKkHash,
       };
       
       const newData = await db.insert(pendudukTable).values(newPendudukData).returning();
       const created = newData[0];
       if (!created) {
         return reply.status(500).send({ success: false, message: "Gagal menyimpan data." });
+      }
+
+      if (kartuKeluargaId && body.shdk && body.shdk.toUpperCase() === "KEPALA KELUARGA") {
+        await db
+          .update(kartuKeluargaTable)
+          .set({ kepalaKeluargaId: created.id })
+          .where(eq(kartuKeluargaTable.id, kartuKeluargaId));
       }
       
       return reply.status(201).send({ 
@@ -143,6 +204,13 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
       const updated = updatedData[0];
       if (!updated) {
         return reply.status(404).send({ success: false, message: "Data penduduk tidak ditemukan." });
+      }
+
+      if (updated.kartuKeluargaId && body.shdk && body.shdk.toUpperCase() === "KEPALA KELUARGA") {
+        await db
+          .update(kartuKeluargaTable)
+          .set({ kepalaKeluargaId: updated.id })
+          .where(eq(kartuKeluargaTable.id, updated.kartuKeluargaId));
       }
 
       return reply.send({ 
