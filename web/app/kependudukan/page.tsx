@@ -1,8 +1,22 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, Search, Plus, MoreHorizontal, Pencil, Trash, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react"
+import {
+  Loader2,
+  Search,
+  Plus,
+  MoreHorizontal,
+  Pencil,
+  Trash,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Upload,
+  FileSpreadsheet,
+  CheckCircle2,
+} from "lucide-react"
 
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
@@ -23,6 +37,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -82,6 +104,12 @@ export default function KependudukanPage() {
   const limit = 10
   const [deleteData, setDeleteData] = useState<{ id: string, name: string } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  const [isImportOpen, setIsImportOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{ totalDiproses: number; berhasil: number; dilewati: number; errors: string[] } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   const { useSession } = authClient;
   const { data: session, isPending: isSessionPending } = useSession()
@@ -159,6 +187,55 @@ export default function KependudukanPage() {
     }, 500)
     return () => clearTimeout(delayDebounceFn)
   }, [searchQuery, session])
+
+  const handleExport = () => {
+    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk/export`)
+    if (selectedRt !== "ALL") url.searchParams.append("rt", selectedRt)
+    if (selectedRw !== "ALL") url.searchParams.append("rw", selectedRw)
+    window.open(url.toString(), "_blank")
+  }
+
+  const handleDownloadTemplate = () => {
+    window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk/template`, "_blank")
+  }
+
+  const handleImportSubmit = async () => {
+    if (!importFile) {
+      toast.error("Pilih file Excel terlebih dahulu")
+      return
+    }
+
+    setIsImporting(true)
+    setImportResult(null)
+
+    try {
+      const formData = new FormData()
+      formData.append("file", importFile)
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk/import`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      })
+
+      const json = await res.json()
+
+      if (res.ok && json.success) {
+        toast.success("Impor Berhasil", { description: json.message })
+        setImportResult(json.data)
+        fetchPenduduk(searchQuery, selectedRt, selectedRw, 1)
+      } else {
+        toast.error("Impor Gagal", { description: json.message || "File tidak dapat diproses" })
+        if (json.errors) {
+          setImportResult({ totalDiproses: 0, berhasil: 0, dilewati: 0, errors: json.errors })
+        }
+      }
+    } catch (error) {
+      toast.error("Kesalahan Jaringan", { description: "Gagal terhubung ke server" })
+    } finally {
+      setIsImporting(false)
+    }
+  }
 
   const handleDelete = async () => {
     if (!deleteData) return
@@ -270,13 +347,37 @@ export default function KependudukanPage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Button 
-                onClick={() => router.push("/kependudukan/tambah")}
-                className="gap-2 font-medium shadow-sm"
-              >
-                <Plus className="h-4 w-4" />
-                Tambah Penduduk
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  onClick={handleExport}
+                  className="gap-2 font-medium shadow-xs"
+                  title="Ekspor Data Penduduk ke Excel"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Ekspor</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsImportOpen(true)
+                    setImportFile(null)
+                    setImportResult(null)
+                  }}
+                  className="gap-2 font-medium shadow-xs"
+                  title="Impor Data Penduduk dari Excel"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span>Impor</span>
+                </Button>
+                <Button 
+                  onClick={() => router.push("/kependudukan/tambah")}
+                  className="gap-2 font-medium shadow-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Tambah Penduduk
+                </Button>
+              </div>
             </div>
           </CardHeader>
           
@@ -396,6 +497,107 @@ export default function KependudukanPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal Dialog Import Excel */}
+      <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-primary" />
+              Impor Data Penduduk (Excel)
+            </DialogTitle>
+            <DialogDescription>
+              Unggah file spreadsheet <strong>.xlsx</strong> sesuai template resmi sistem kependudukan.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/20">
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold text-foreground">Template Format Excel</p>
+                <p className="text-[11px] text-muted-foreground">Unduh format kolom yang sudah divalidasi sistem</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadTemplate}
+                className="gap-1.5 text-xs"
+              >
+                <Download className="size-3.5" />
+                Unduh Template
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-foreground">Pilih File Excel (.xlsx)</label>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed transition-colors cursor-pointer ${
+                  importFile ? "border-primary/60 bg-primary/5" : "border-border hover:border-primary/40 bg-card"
+                }`}
+              >
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                  accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  className="hidden"
+                />
+                <FileSpreadsheet className={`size-8 mb-2 ${importFile ? "text-primary" : "text-muted-foreground"}`} />
+                <p className="text-xs font-medium text-center text-foreground">
+                  {importFile ? importFile.name : "Klik untuk memilih file spreadsheet"}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Maksimal ukuran file 10MB
+                </p>
+              </div>
+            </div>
+
+            {importResult && (
+              <div className="p-3.5 rounded-xl border bg-muted/20 space-y-2 text-xs">
+                <div className="flex items-center gap-2 font-semibold text-foreground">
+                  <CheckCircle2 className="size-4 text-emerald-500" />
+                  Laporan Hasil Impor
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                  <div className="p-2 rounded-lg bg-card border">
+                    <span className="text-[10px] text-muted-foreground">Diproses</span>
+                    <p className="font-bold text-sm text-foreground">{importResult.totalDiproses}</p>
+                  </div>
+                  <div className="p-2 rounded-lg bg-card border">
+                    <span className="text-[10px] text-emerald-500">Berhasil</span>
+                    <p className="font-bold text-sm text-emerald-500">{importResult.berhasil}</p>
+                  </div>
+                  <div className="p-2 rounded-lg bg-card border">
+                    <span className="text-[10px] text-amber-500">Dilewati (Duplikat)</span>
+                    <p className="font-bold text-sm text-amber-500">{importResult.dilewati}</p>
+                  </div>
+                </div>
+                {importResult.errors && importResult.errors.length > 0 && (
+                  <div className="space-y-1 pt-1 text-[11px] text-destructive">
+                    <p className="font-semibold">Catatan Kesalahan Format:</p>
+                    <ul className="list-disc list-inside space-y-0.5 max-h-20 overflow-y-auto">
+                      {importResult.errors.map((err, i) => (
+                        <li key={i}>{err}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsImportOpen(false)} disabled={isImporting}>
+              Tutup
+            </Button>
+            <Button onClick={handleImportSubmit} disabled={isImporting || !importFile} className="gap-2">
+              {isImporting ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+              {isImporting ? "Memproses..." : "Mulai Impor"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!deleteData} onOpenChange={(open) => !open && setDeleteData(null)}>
         <AlertDialogContent>

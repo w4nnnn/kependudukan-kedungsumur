@@ -2,7 +2,20 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, Search, Plus, MoreHorizontal, Pencil, Trash, AlertTriangle, ChevronLeft, ChevronRight, Eye, Home } from "lucide-react"
+import {
+  Loader2,
+  Search,
+  Plus,
+  MoreHorizontal,
+  Pencil,
+  Trash,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Home,
+  Download,
+} from "lucide-react"
 
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
@@ -145,6 +158,13 @@ export default function KartuKeluargaPage() {
     return () => clearTimeout(delayDebounceFn)
   }, [searchQuery, session])
 
+  const handleExport = () => {
+    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/kk/export`)
+    if (selectedRt !== "ALL") url.searchParams.append("rt", selectedRt)
+    if (selectedRw !== "ALL") url.searchParams.append("rw", selectedRw)
+    window.open(url.toString(), "_blank")
+  }
+
   const handleDelete = async () => {
     if (!deleteData) return
     
@@ -256,13 +276,24 @@ export default function KartuKeluargaPage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Button 
-                onClick={() => router.push("/kk/tambah")}
-                className="gap-2 font-medium shadow-sm"
-              >
-                <Plus className="h-4 w-4" />
-                Tambah KK
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  onClick={handleExport}
+                  className="gap-2 font-medium shadow-xs"
+                  title="Ekspor Rekap Kartu Keluarga ke Excel"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Ekspor</span>
+                </Button>
+                <Button 
+                  onClick={() => router.push("/kk/tambah")}
+                  className="gap-2 font-medium shadow-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Tambah KK
+                </Button>
+              </div>
             </div>
           </CardHeader>
           
