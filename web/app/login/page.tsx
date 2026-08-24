@@ -50,15 +50,14 @@ export default function LoginPage() {
       
       console.log("Login response:", res);
 
-      if (res.error) {
-        // Asumsi error.message atau sejenisnya dikembalikan
+      if (res && res.error) {
         setErrorMsg(res.error.message || "Gagal login. Periksa username dan password Anda.")
       } else {
         router.push("/kependudukan") 
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login catch error:", error);
-      setErrorMsg("Terjadi kesalahan pada server. Silakan coba lagi nanti.")
+      setErrorMsg(error?.message || "Gagal terhubung ke backend server (Port 4000). Pastikan server backend sedang berjalan.")
     } finally {
       setIsLoading(false)
     }
