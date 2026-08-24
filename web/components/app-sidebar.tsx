@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Users, UserCog, LogOut } from "lucide-react"
+import { Users, UserCog, LogOut, Contact2 } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 
 import { authClient } from "@/lib/auth-client"
@@ -53,11 +53,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               render={
                 <a href="/kependudukan">
                   <Users />
-                  <span>Kependudukan</span>
+                  <span>Penduduk</span>
                 </a>
               }
               isActive={pathname.startsWith("/kependudukan")}
-              tooltip="Data Kependudukan"
+              tooltip="Data Penduduk"
+            />
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton 
+              render={
+                <a href="/kk">
+                  <Contact2 />
+                  <span>Kartu Keluarga</span>
+                </a>
+              }
+              isActive={pathname.startsWith("/kk")}
+              tooltip="Data Kartu Keluarga"
             />
           </SidebarMenuItem>
           <SidebarMenuItem>
