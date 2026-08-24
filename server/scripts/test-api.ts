@@ -5,6 +5,7 @@ import { runAuthTests, runSignOutTests } from "./tests/auth.test.js";
 import { runPendudukTests } from "./tests/penduduk.test.js";
 import { runKKTests } from "./tests/kk.test.js";
 import { runStatsTests } from "./tests/stats.test.js";
+import { runExportImportTests } from "./tests/export-import.test.js";
 
 async function main() {
   const client = new TestClient();
@@ -34,6 +35,7 @@ async function main() {
   await runPendudukTests(client, runner);
   await runKKTests(client, runner);
   await runStatsTests(client, runner);
+  await runExportImportTests(client, runner);
   await runSignOutTests(client, runner);
 
   runner.printSummary();
