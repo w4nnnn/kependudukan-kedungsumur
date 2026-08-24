@@ -323,11 +323,6 @@ export default function DetailPendudukPage() {
                                 }`}>
                                   {anggota.namaLengkap}
                                 </p>
-                                {isCurrent && (
-                                  <span className="text-[10px] bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-bold shadow-xs shrink-0">
-                                    Sedang Dilihat
-                                  </span>
-                                )}
                               </div>
                               <p className="text-[11px] font-mono text-muted-foreground truncate">
                                 NIK: {anggota.nik}

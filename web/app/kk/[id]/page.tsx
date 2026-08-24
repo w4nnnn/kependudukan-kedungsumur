@@ -309,14 +309,14 @@ export default function DetailKartuKeluargaPage() {
 
         {/* Master Kartu Keluarga View */}
         <Card className="border-2 border-primary/20 shadow-md">
-          <CardHeader className="bg-muted/30 border-b pb-4 text-center">
+          <div className="bg-muted/40 border-b p-6 text-center space-y-1">
             <h2 className="text-xl font-extrabold tracking-wider uppercase text-foreground">
               KARTU KELUARGA
             </h2>
             <p className="text-2xl font-mono font-bold tracking-widest text-primary">
               No. {data.noKk}
             </p>
-          </CardHeader>
+          </div>
           <CardContent className="pt-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-muted/10 p-4 rounded-xl border">
               <div className="space-y-3">

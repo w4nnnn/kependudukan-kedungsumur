@@ -46,69 +46,84 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarSeparator className="bg-border/10" />
-      <SidebarContent className="px-2 py-4">
-        <SidebarMenu>
+      <SidebarContent className="px-3 py-4">
+        <SidebarMenu className="gap-2">
           <SidebarMenuItem>
             <SidebarMenuButton 
               render={
                 <a href="/kependudukan">
-                  <Users />
-                  <span>Penduduk</span>
+                  <Users className="size-4 shrink-0" />
+                  <span className="font-medium">Penduduk</span>
                 </a>
               }
               isActive={pathname.startsWith("/kependudukan")}
               tooltip="Data Penduduk"
+              className={`rounded-xl px-3 py-2.5 transition-all duration-200 ${
+                pathname.startsWith("/kependudukan")
+                  ? "border-2 border-primary bg-primary/10 text-primary font-bold shadow-xs ring-2 ring-primary/20"
+                  : "border-2 border-border/60 bg-card hover:border-primary/40 hover:bg-muted/50 text-foreground"
+              }`}
             />
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton 
               render={
                 <a href="/kk">
-                  <Contact2 />
-                  <span>Kartu Keluarga</span>
+                  <Contact2 className="size-4 shrink-0" />
+                  <span className="font-medium">Kartu Keluarga</span>
                 </a>
               }
               isActive={pathname.startsWith("/kk")}
               tooltip="Data Kartu Keluarga"
+              className={`rounded-xl px-3 py-2.5 transition-all duration-200 ${
+                pathname.startsWith("/kk")
+                  ? "border-2 border-primary bg-primary/10 text-primary font-bold shadow-xs ring-2 ring-primary/20"
+                  : "border-2 border-border/60 bg-card hover:border-primary/40 hover:bg-muted/50 text-foreground"
+              }`}
             />
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton 
               render={
                 <a href="/pengguna">
-                  <UserCog />
-                  <span>Pengguna</span>
+                  <UserCog className="size-4 shrink-0" />
+                  <span className="font-medium">Pengguna</span>
                 </a>
               }
               isActive={pathname.startsWith("/pengguna")}
               tooltip="Manajemen Pengguna"
+              className={`rounded-xl px-3 py-2.5 transition-all duration-200 ${
+                pathname.startsWith("/pengguna")
+                  ? "border-2 border-primary bg-primary/10 text-primary font-bold shadow-xs ring-2 ring-primary/20"
+                  : "border-2 border-border/60 bg-card hover:border-primary/40 hover:bg-muted/50 text-foreground"
+              }`}
             />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="p-4">
-        <Card className="flex flex-col gap-3 p-3 bg-white/5 border-white/10 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:border-transparent shadow-none">
+      <SidebarFooter className="p-3">
+        <div className="flex flex-col gap-3 p-3.5 rounded-xl border-2 border-border/60 bg-card group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:border-transparent shadow-xs">
           {session?.user && (
-            <div className="flex flex-col gap-0.5 px-1 opacity-90 group-data-[collapsible=icon]:hidden">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Masuk sebagai</span>
-              <span className="text-sm font-semibold truncate text-foreground">{session.user.name}</span>
+            <div className="flex flex-col gap-0.5 px-0.5 group-data-[collapsible=icon]:hidden">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Masuk sebagai</span>
+              <span className="text-sm font-bold truncate text-foreground">{session.user.name}</span>
             </div>
           )}
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton 
                 render={
-                  <button onClick={handleLogout} className="border-2 border-destructive/20">
-                    <LogOut />
-                    <span>Keluar</span>
+                  <button onClick={handleLogout}>
+                    <LogOut className="size-4 shrink-0" />
+                    <span className="font-medium">Keluar</span>
                   </button>
                 }
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive group-data-[collapsible=icon]:justify-center"
+                className="rounded-lg border-2 border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-all duration-200 group-data-[collapsible=icon]:justify-center"
                 tooltip="Keluar"
               />
             </SidebarMenuItem>
           </SidebarMenu>
-        </Card>
+        </div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
