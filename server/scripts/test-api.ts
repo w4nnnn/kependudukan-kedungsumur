@@ -3,6 +3,7 @@ import { TestClient, TestRunner } from "./tests/client.js";
 import { assertEqual, assertType, assert } from "./tests/assertions.js";
 import { runAuthTests, runSignOutTests } from "./tests/auth.test.js";
 import { runPendudukTests } from "./tests/penduduk.test.js";
+import { runKKTests } from "./tests/kk.test.js";
 
 async function main() {
   const client = new TestClient();
@@ -30,6 +31,7 @@ async function main() {
 
   await runAuthTests(client, runner);
   await runPendudukTests(client, runner);
+  await runKKTests(client, runner);
   await runSignOutTests(client, runner);
 
   runner.printSummary();

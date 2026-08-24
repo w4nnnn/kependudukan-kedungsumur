@@ -131,6 +131,29 @@ export function validatePendudukSchema(item: any, contextName = "data") {
   }
 }
 
+export function validateKartuKeluargaSchema(item: any, contextName = "data") {
+  assertType(item, "object", contextName);
+  assertUUID(item.id, `${contextName}.id`);
+  assertType(item.noKk, "string", `${contextName}.noKk`);
+  assert(item.noKk.length === 16, `Field '${contextName}.noKk' harus 16 digit, didapat: ${item.noKk.length}`);
+  assertType(item.alamat, "string", `${contextName}.alamat`);
+  assertType(item.rt, "string", `${contextName}.rt`);
+  assertType(item.rw, "string", `${contextName}.rw`);
+
+  if (item.noKkHash) {
+    assertType(item.noKkHash, "string", `${contextName}.noKkHash`);
+    assert(item.noKkHash.length === 64, `Field '${contextName}.noKkHash' harus berukuran 64 karakter hash`);
+  }
+
+  if (item.kepalaKeluargaId !== null && item.kepalaKeluargaId !== undefined) {
+    assertUUID(item.kepalaKeluargaId, `${contextName}.kepalaKeluargaId`);
+  }
+
+  if (item.jumlahAnggota !== undefined && item.jumlahAnggota !== null) {
+    assertType(item.jumlahAnggota, "number", `${contextName}.jumlahAnggota`);
+  }
+}
+
 export function validatePaginationMeta(meta: any) {
   assertType(meta, "object", "meta");
   assertType(meta.total, "number", "meta.total");
