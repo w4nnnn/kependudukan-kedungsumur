@@ -23,7 +23,7 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
 
   fastify.get("/api/penduduk", async (request, reply) => {
     try {
-      const { search, nik, nokk, kkId, limit = 100, page = 1 } = request.query as any;
+      const { search, nik, nokk, kkId, rt, rw, limit = 100, page = 1 } = request.query as any;
       const offset = (Number(page) - 1) * Number(limit);
 
       let query = db.select().from(pendudukTable).$dynamic();
@@ -45,6 +45,14 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
 
       if (kkId) {
         conditions.push(eq(pendudukTable.kartuKeluargaId, kkId));
+      }
+
+      if (rt) {
+        conditions.push(eq(pendudukTable.rt, rt));
+      }
+
+      if (rw) {
+        conditions.push(eq(pendudukTable.rw, rw));
       }
 
       if (conditions.length > 0) {

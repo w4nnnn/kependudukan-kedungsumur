@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 
 interface Penduduk {
@@ -73,6 +74,8 @@ export default function KependudukanPage() {
   const [dataPenduduk, setDataPenduduk] = useState<Penduduk[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedRt, setSelectedRt] = useState<string>("ALL")
+  const [selectedRw, setSelectedRw] = useState<string>("ALL")
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalData, setTotalData] = useState(0)
@@ -93,11 +96,10 @@ export default function KependudukanPage() {
     }
   }, [mounted, session, isSessionPending, router])
 
-  // Fetch Data Penduduk
-  const fetchPenduduk = async (search = "", page = 1) => {
+  const fetchPenduduk = async (search = "", rt = "ALL", rw = "ALL", page = 1) => {
     setIsLoading(true)
     try {
-      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/api/penduduk`)
+      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk`)
       url.searchParams.append("page", page.toString())
       url.searchParams.append("limit", limit.toString())
 
@@ -108,8 +110,15 @@ export default function KependudukanPage() {
           url.searchParams.append("search", search)
         }
       }
+
+      if (rt !== "ALL") {
+        url.searchParams.append("rt", rt)
+      }
+
+      if (rw !== "ALL") {
+        url.searchParams.append("rw", rw)
+      }
       
-      // Kita butuh kredensial (cookie) untuk dikirim ke API Fastify
       const res = await fetch(url.toString(), {
         credentials: "include", 
       })
@@ -127,7 +136,6 @@ export default function KependudukanPage() {
           }
         }
       } else if (res.status === 401 || res.status === 403) {
-        // Jika API menolak karena sesi tidak valid
         router.push("/login")
       }
     } catch (error) {
@@ -137,18 +145,17 @@ export default function KependudukanPage() {
     }
   }
 
-  // Load data awal
   useEffect(() => {
     if (session) {
-      fetchPenduduk(searchQuery, currentPage)
+      fetchPenduduk(searchQuery, selectedRt, selectedRw, currentPage)
     }
-  }, [session, currentPage])
+  }, [session, currentPage, selectedRt, selectedRw])
 
   useEffect(() => {
     if (!session) return
     const delayDebounceFn = setTimeout(() => {
       setCurrentPage(1)
-      fetchPenduduk(searchQuery, 1)
+      fetchPenduduk(searchQuery, selectedRt, selectedRw, 1)
     }, 500)
     return () => clearTimeout(delayDebounceFn)
   }, [searchQuery, session])
@@ -169,7 +176,7 @@ export default function KependudukanPage() {
         toast.success("Berhasil", {
           description: `Data ${deleteData.name} telah dihapus.`,
         })
-        fetchPenduduk(searchQuery, currentPage)
+        fetchPenduduk(searchQuery, selectedRt, selectedRw, currentPage)
       } else {
         toast.error("Gagal menghapus data", {
           description: result.message || "Terjadi kesalahan sistem.",
@@ -214,20 +221,54 @@ export default function KependudukanPage() {
 
         {/* Card Tabel */}
         <Card className="shadow-sm overflow-hidden">
-          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-4 border-b">
+          <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between pb-4 border-b">
             <CardTitle className="flex items-center gap-2">
               <span>Daftar Penduduk</span>
             </CardTitle>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center w-full sm:w-auto">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center flex-wrap">
+              {/* Filter RT */}
+              <div className="w-full sm:w-28">
+                <Select value={selectedRt} onValueChange={(val) => { setSelectedRt(val || "ALL"); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="RT" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Semua RT</SelectItem>
+                    <SelectItem value="001">RT 001</SelectItem>
+                    <SelectItem value="002">RT 002</SelectItem>
+                    <SelectItem value="003">RT 003</SelectItem>
+                    <SelectItem value="004">RT 004</SelectItem>
+                    <SelectItem value="005">RT 005</SelectItem>
+                    <SelectItem value="006">RT 006</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Filter RW */}
+              <div className="w-full sm:w-28">
+                <Select value={selectedRw} onValueChange={(val) => { setSelectedRw(val || "ALL"); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="RW" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Semua RW</SelectItem>
+                    <SelectItem value="001">RW 001</SelectItem>
+                    <SelectItem value="002">RW 002</SelectItem>
+                    <SelectItem value="003">RW 003</SelectItem>
+                    <SelectItem value="004">RW 004</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="relative group w-full sm:w-auto">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors" />
-                  <Input
-                    type="search"
-                    placeholder="Cari nama atau NIK (16 digit)..."
-                    className="w-full pl-9 sm:w-72 transition-all rounded-lg"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
+                <Input
+                  type="search"
+                  placeholder="Cari nama atau NIK (16 digit)..."
+                  className="w-full pl-9 sm:w-64 transition-all rounded-lg"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
               <Button 
                 onClick={() => router.push("/kependudukan/tambah")}
