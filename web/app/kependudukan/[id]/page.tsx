@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { Loader2, ArrowLeft, User, MapPin, Calendar, Briefcase, FileText, Mosque, Pencil } from "lucide-react"
+import { Loader2, ArrowLeft, User, MapPin, Calendar, Briefcase, FileText, Mosque, Pencil, Users, ArrowUpRight, Home } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,6 +11,25 @@ import { authClient } from "@/lib/auth-client"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { id as localeId } from "date-fns/locale"
+
+interface RingkasanAnggota {
+  id: string
+  nik: string
+  namaLengkap: string
+  shdk: string
+  urutanKk?: string | null
+  jenisKelamin: string
+  fotoUrl?: string | null
+}
+
+interface KartuKeluargaSingkat {
+  id: string
+  noKk: string
+  alamat: string
+  rt: string
+  rw: string
+  dusun?: string | null
+}
 
 interface Penduduk {
   id: string
@@ -25,9 +44,17 @@ interface Penduduk {
   rw: string
   agama: string
   statusPerkawinan: string
+  shdk?: string | null
+  kartuKeluargaId?: string | null
+  namaAyah?: string | null
+  namaIbu?: string | null
+  pendidikan?: string | null
+  golonganDarah?: string | null
   pekerjaan: string
   foto?: string | null
   fotoUrl?: string | null
+  kartuKeluarga?: KartuKeluargaSingkat | null
+  anggotaKeluarga?: RingkasanAnggota[]
 }
 
 function getInitials(name: string) {
@@ -220,12 +247,115 @@ export default function DetailPendudukPage() {
                 </div>
               </div>
               <div className="flex items-start gap-4">
+                <User className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Status Hubungan di KK (SHDK)</p>
+                  <p className="font-semibold">{data.shdk || "KEPALA KELUARGA"}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
                 <Briefcase className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">Pekerjaan</p>
                   <p className="font-medium">{data.pekerjaan || "-"}</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Card Info Keluarga Singkat */}
+          <Card className="md:col-span-2">
+            <CardHeader className="border-b pb-4 flex flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                <div>
+                  <CardTitle>Informasi Keluarga</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Anggota yang terdaftar dalam satu Kartu Keluarga (No. {data.noKk})
+                  </p>
+                </div>
+              </div>
+              {data.kartuKeluargaId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push(`/kk/${data.kartuKeluargaId}`)}
+                  className="gap-1 text-xs"
+                >
+                  <span>Buka Lembar KK</span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="pt-6">
+              {data.anggotaKeluarga && data.anggotaKeluarga.length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {data.anggotaKeluarga.map((anggota) => {
+                    const isCurrent = anggota.id === data.id;
+                    return (
+                      <div
+                        key={anggota.id}
+                        onClick={() => {
+                          if (!isCurrent) {
+                            router.push(`/kependudukan/${anggota.id}`)
+                          }
+                        }}
+                        className={`group relative flex flex-col justify-between p-3.5 rounded-xl border-2 transition-all duration-200 ${
+                          isCurrent
+                            ? "border-primary bg-primary/10 shadow-md cursor-default ring-2 ring-primary/30"
+                            : "border-border/60 bg-card hover:bg-muted/50 hover:border-primary/40 hover:shadow-xs cursor-pointer"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <Avatar className={`size-10 shrink-0 border-2 ${isCurrent ? "border-primary" : "border-border"}`}>
+                              {anggota.fotoUrl ? (
+                                <AvatarImage src={anggota.fotoUrl} alt={anggota.namaLengkap} />
+                              ) : null}
+                              <AvatarFallback className="text-xs font-semibold">
+                                {getInitials(anggota.namaLengkap)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1 space-y-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <p className={`text-sm font-semibold truncate ${
+                                  isCurrent ? "text-primary font-bold" : "text-foreground group-hover:text-primary transition-colors"
+                                }`}>
+                                  {anggota.namaLengkap}
+                                </p>
+                                {isCurrent && (
+                                  <span className="text-[10px] bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-bold shadow-xs shrink-0">
+                                    Sedang Dilihat
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] font-mono text-muted-foreground truncate">
+                                NIK: {anggota.nik}
+                              </p>
+                            </div>
+                          </div>
+
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-md font-medium tracking-wide shrink-0 ${
+                              anggota.shdk === "KEPALA KELUARGA"
+                                ? "bg-primary/20 text-primary border border-primary/40 font-semibold"
+                                : isCurrent
+                                ? "bg-background text-foreground border border-border"
+                                : "bg-muted text-muted-foreground border border-border/50"
+                            }`}
+                          >
+                            {anggota.shdk}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  Belum ada anggota keluarga lain yang terhubung dengan No KK ini.
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

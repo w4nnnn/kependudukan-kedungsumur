@@ -33,6 +33,7 @@ const formSchema = z.object({
   rw: z.string().length(3, "RW harus 3 digit (contoh: 002)"),
   agama: z.enum(["Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu"], { required_error: "Pilih agama" }),
   statusPerkawinan: z.enum(["Belum Kawin", "Kawin", "Cerai Hidup", "Cerai Mati"], { required_error: "Pilih status perkawinan" }),
+  shdk: z.string().min(1, "Pilih status dalam keluarga"),
   pekerjaan: z.string().min(2, "Pekerjaan wajib diisi"),
 })
 
@@ -83,6 +84,7 @@ export default function EditPendudukPage() {
       rw: "",
       agama: undefined,
       statusPerkawinan: undefined,
+      shdk: "KEPALA KELUARGA",
       pekerjaan: "",
     },
   })
@@ -471,6 +473,32 @@ export default function EditPendudukPage() {
                     </SelectContent>
                   </Select>
                   {errors.statusPerkawinan && <p className="text-sm text-destructive">{errors.statusPerkawinan.message}</p>}
+                </div>
+
+                {/* Status Hubungan Dalam Keluarga (SHDK) */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status Hubungan di KK (SHDK)</label>
+                  <Select value={watch("shdk")} onValueChange={(v: any) => setValue("shdk", v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih SHDK" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>SHDK</SelectLabel>
+                        <SelectItem value="KEPALA KELUARGA">Kepala Keluarga</SelectItem>
+                        <SelectItem value="SUAMI">Suami</SelectItem>
+                        <SelectItem value="ISTRI">Istri</SelectItem>
+                        <SelectItem value="ANAK">Anak</SelectItem>
+                        <SelectItem value="MENANTU">Menantu</SelectItem>
+                        <SelectItem value="CUCU">Cucu</SelectItem>
+                        <SelectItem value="ORANG TUA">Orang Tua</SelectItem>
+                        <SelectItem value="MERTUA">Mertua</SelectItem>
+                        <SelectItem value="FAMILI LAIN">Famili Lain</SelectItem>
+                        <SelectItem value="LAINNYA">Lainnya</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  {errors.shdk && <p className="text-sm text-destructive">{errors.shdk.message}</p>}
                 </div>
 
                 {/* Alamat Lengkap */}
