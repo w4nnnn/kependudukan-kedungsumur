@@ -12,6 +12,8 @@ import {
   TrendingUp,
   MapPin,
   RefreshCw,
+  FileText,
+  Download,
 } from "lucide-react"
 import {
   BarChart,
@@ -107,6 +109,13 @@ export default function DashboardPage() {
     }
   }, [session, selectedRt, selectedRw])
 
+  const handleExportPDF = () => {
+    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/stats/pdf`)
+    if (selectedRt !== "ALL") url.searchParams.append("rt", selectedRt)
+    if (selectedRw !== "ALL") url.searchParams.append("rw", selectedRw)
+    window.open(url.toString(), "_blank")
+  }
+
   if (!mounted || isSessionPending) {
     return (
       <div className="flex h-full min-h-screen items-center justify-center p-24">
@@ -163,6 +172,16 @@ export default function DashboardPage() {
               </SelectContent>
             </Select>
           </div>
+
+          <Button
+            variant="outline"
+            onClick={handleExportPDF}
+            className="gap-2 font-medium shadow-xs"
+            title="Unduh Laporan Resmi Statistik Kependudukan (PDF)"
+          >
+            <FileText className="size-4 text-primary" />
+            <span>Unduh Laporan PDF</span>
+          </Button>
 
           <Button
             variant="outline"
