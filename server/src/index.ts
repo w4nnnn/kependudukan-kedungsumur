@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.routes.js";
 import pendudukRoutes from "./routes/penduduk.routes.js";
 import kkRoutes from "./routes/kk.routes.js";
 import statsRoutes from "./routes/stats.routes.js";
+import exportImportRoutes from "./routes/export-import.routes.js";
 import { initMinioBucket } from "./lib/minio.js";
 
 const app = fastify({
@@ -28,7 +29,7 @@ app.register(cors, {
 
 app.register(multipart, {
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    fileSize: 10 * 1024 * 1024,
     files: 1,
   },
 });
@@ -37,6 +38,7 @@ app.register(authRoutes);
 app.register(pendudukRoutes);
 app.register(kkRoutes);
 app.register(statsRoutes);
+app.register(exportImportRoutes);
 
 app.get("/", async (request, reply) => {
   return { message: "Selamat Datang di API Kependudukan Desa Kedungsumur" };

@@ -8,12 +8,14 @@
     "cryptr": "^6.4.0",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
+    "exceljs": "^4.4.0",
     "fastify": "^5.11.3",
     "minio": "^8.0.7",
     "pg": "^8.23.0"
   },
   "devDependencies": {
     "@types/cryptr": "^4.0.3",
+    "@types/exceljs": "^0.5.3",
     "@types/minio": "^7.1.0",
     "@types/node": "^22.20.1",
     "@types/pg": "^8.21.0",
