@@ -175,10 +175,24 @@ export default async function kkRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // 3. POST /api/kk (Tambah Kartu Keluarga Baru)
-  fastify.post<{ Body: KartuKeluargaInsert }>("/api/kk", async (request, reply) => {
+  fastify.post<{
+    Body: KartuKeluargaInsert & {
+      modeKepala?: "select" | "create";
+      selectedPendudukId?: string;
+      newPenduduk?: {
+        nik: string;
+        namaLengkap: string;
+        tempatLahir: string;
+        tanggalLahir: string;
+        jenisKelamin: string;
+        agama: string;
+        statusPerkawinan: string;
+        pekerjaan?: string;
+      };
+    };
+  }>("/api/kk", async (request, reply) => {
     try {
-      const body = request.body;
+      const { modeKepala, selectedPendudukId, newPenduduk, ...body } = request.body;
 
       if (!body.noKk) {
         return reply.status(400).send({ success: false, message: "Nomor KK wajib diisi." });
@@ -204,11 +218,62 @@ export default async function kkRoutes(fastify: FastifyInstance) {
         })
         .returning();
 
-      const created = newKK[0];
+      const createdKK = newKK[0];
+      if (!createdKK) {
+        return reply.status(500).send({ success: false, message: "Gagal membuat data Kartu Keluarga." });
+      }
+
+      let kepalaId: string | null = null;
+
+      if (modeKepala === "select" && selectedPendudukId) {
+        kepalaId = selectedPendudukId;
+        await db
+          .update(pendudukTable)
+          .set({
+            kartuKeluargaId: createdKK.id,
+            noKk: createdKK.noKk,
+            noKkHash: createdKK.noKkHash,
+            alamat: createdKK.alamat,
+            rt: createdKK.rt,
+            rw: createdKK.rw,
+            shdk: "KEPALA KELUARGA",
+            urutanKk: "1",
+          })
+          .where(eq(pendudukTable.id, selectedPendudukId));
+      } else if (modeKepala === "create" && newPenduduk && newPenduduk.nik && newPenduduk.namaLengkap) {
+        const nikHash = hashKependudukan(newPenduduk.nik);
+        const [insertedPenduduk] = await db
+          .insert(pendudukTable)
+          .values({
+            ...newPenduduk,
+            kartuKeluargaId: createdKK.id,
+            nikHash,
+            noKk: createdKK.noKk,
+            noKkHash: createdKK.noKkHash,
+            alamat: createdKK.alamat,
+            rt: createdKK.rt,
+            rw: createdKK.rw,
+            shdk: "KEPALA KELUARGA",
+            urutanKk: "1",
+          })
+          .returning();
+
+        if (insertedPenduduk) {
+          kepalaId = insertedPenduduk.id;
+        }
+      }
+
+      if (kepalaId) {
+        await db
+          .update(kartuKeluargaTable)
+          .set({ kepalaKeluargaId: kepalaId })
+          .where(eq(kartuKeluargaTable.id, createdKK.id));
+      }
+
       return reply.status(201).send({
         success: true,
         message: "Data Kartu Keluarga berhasil ditambahkan.",
-        data: created,
+        data: createdKK,
       });
     } catch (error: any) {
       fastify.log.error(error);
@@ -219,7 +284,7 @@ export default async function kkRoutes(fastify: FastifyInstance) {
         error?.cause?.message?.includes("duplicate key");
 
       if (isUniqueViolation) {
-        return reply.status(400).send({ success: false, message: "Nomor KK sudah terdaftar." });
+        return reply.status(400).send({ success: false, message: "Nomor KK atau NIK sudah terdaftar." });
       }
       return reply.status(500).send({ success: false, message: "Gagal menyimpan data Kartu Keluarga." });
     }
