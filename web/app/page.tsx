@@ -12,7 +12,7 @@ export default function RootPage() {
   useEffect(() => {
     if (!isPending) {
       if (session) {
-        router.replace("/kependudukan")
+        router.replace("/dashboard")
       } else {
         router.replace("/login")
       }

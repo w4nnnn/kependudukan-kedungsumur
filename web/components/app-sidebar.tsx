@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Users, UserCog, LogOut, Contact2 } from "lucide-react"
+import { LayoutDashboard, Users, UserCog, LogOut, Contact2 } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 
 import { authClient } from "@/lib/auth-client"
@@ -16,7 +16,6 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
-import { Card } from "@/components/ui/card"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
@@ -48,6 +47,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarSeparator className="bg-border/10" />
       <SidebarContent className="px-3 py-4">
         <SidebarMenu className="gap-2">
+          <SidebarMenuItem>
+            <SidebarMenuButton 
+              render={
+                <a href="/dashboard">
+                  <LayoutDashboard className="size-4 shrink-0" />
+                  <span className="font-medium">Dashboard</span>
+                </a>
+              }
+              isActive={pathname === "/dashboard"}
+              tooltip="Statistik & Dashboard"
+              className={`rounded-xl px-3 py-2.5 transition-all duration-200 ${
+                pathname === "/dashboard"
+                  ? "border-2 border-primary bg-primary/10 text-primary font-bold shadow-xs ring-2 ring-primary/20"
+                  : "border-2 border-border/60 bg-card hover:border-primary/40 hover:bg-muted/50 text-foreground"
+              }`}
+            />
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton 
               render={
