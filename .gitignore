@@ -4,3 +4,6 @@
 node_modules
 dist
 .next
+.playwright-mcp
+.playwright-mcp
+sample_import_penduduk.xlsx
