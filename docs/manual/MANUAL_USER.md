@@ -1,5 +1,16 @@
-# 📘 Buku Panduan Pengguna (User Manual)
+<p align="center">
+  <img src="images/logo_kkn_17_black_cropped.png" alt="Logo KKN 17 Kedung Sumur" width="180" />
+</p>
+
+# 📘 BUKU PANDUAN PENGGUNA (USER MANUAL)
 ## Sistem Informasi Kependudukan Desa Kedungsumur (SID)
+
+<p align="center">
+  <b>Kuliah Kerja Nyata (KKN) Kelompok 17</b><br>
+  <b>Fakultas Ilmu Komputer (FILKOM) — Universitas Nahdlatul Ulama Sidoarjo (UNUSIDA)</b><br>
+  <i>Bekerjasama dengan Pemerintah Desa Kedungsumur, Kecamatan Krembung, Kabupaten Sidoarjo</i><br>
+  <b>Tahun 2026</b>
+</p>
 
 ---
 
@@ -41,7 +52,7 @@
 
 ## 1. Pendahuluan & Gambaran Umum Sistem
 
-**Sistem Informasi Kependudukan (SID) Desa Kedungsumur** dirancang untuk mempermudah aparatur desa, administrator, dan staf operator dalam mencatat, memperbarui, memvalidasi, serta menyajikan data demografi kependudukan secara akurat, modern, dan aman.
+**Sistem Informasi Kependudukan (SID) Desa Kedungsumur** merupakan aplikasi manajemen administrasi desa modern yang dikembangkan sebagai bagian dari program pengabdian masyarakat oleh mahasiswa **Kuliah Kerja Nyata (KKN) Kelompok 17 Fakultas Ilmu Komputer (FILKOM) Universitas Nahdlatul Ulama Sidoarjo (UNUSIDA)** bekerjasama dengan **Pemerintah Desa Kedungsumur**. Aplikasi ini dirancang untuk mempermudah aparatur desa, administrator, dan staf operator dalam mencatat, memperbarui, memvalidasi, serta menyajikan data demografi kependudukan secara akurat, terstruktur, dan aman.
 
 ### Keunggulan Utama Sistem:
 - **Keamanan Data Mutakhir:** NIK (Nomor Induk Kependudukan) dan Nomor Kartu Keluarga (KK) dilindungi enkripsi standar militer **AES-256-GCM** serta teknik *Blind Indexing* untuk mencegah kebocoran data sensitif warga.
@@ -422,4 +433,5 @@ Untuk menonaktifkan akun sementara (misal staf sedang cuti atau mutasi tugas):
 ---
 
 *Buku Panduan Pengguna — Sistem Informasi Kependudukan Desa Kedungsumur v1.0*  
-*Pemerintah Desa Kedungsumur © 2026. Hak Cipta Dilindungi Undang-Undang.*
+*Disusun oleh Tim KKN Kelompok 17 — Fakultas Ilmu Komputer (FILKOM) — Universitas Nahdlatul Ulama Sidoarjo (UNUSIDA)*  
+*Bekerjasama dengan Pemerintah Desa Kedungsumur © 2026. Hak Cipta Dilindungi Undang-Undang.*
