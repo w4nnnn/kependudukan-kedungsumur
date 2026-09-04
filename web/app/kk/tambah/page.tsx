@@ -8,7 +8,7 @@ import * as z from "zod"
 import { Calendar as CalendarIcon, Loader2, ArrowLeft, Save, UserCheck, UserPlus, Users, Search } from "lucide-react"
 import { format } from "date-fns"
 
-import { cn } from "@/lib/utils"
+import { cn, formatDateId } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -278,7 +278,7 @@ export default function TambahKartuKeluargaPage() {
                         !watch("tanggalDikeluarkan") && "text-muted-foreground"
                       )}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {watch("tanggalDikeluarkan") ? format(watch("tanggalDikeluarkan") as Date, "PPP") : <span>Pilih tanggal terbit KK</span>}
+                      {watch("tanggalDikeluarkan") ? formatDateId(watch("tanggalDikeluarkan") as Date) : <span>Pilih tanggal terbit KK</span>}
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
@@ -409,7 +409,7 @@ export default function TambahKartuKeluargaPage() {
                             !watch("tanggalLahirBaru") && "text-muted-foreground"
                           )}>
                           <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                          {watch("tanggalLahirBaru") ? format(watch("tanggalLahirBaru") as Date, "dd/MM/yyyy") : <span>Pilih tanggal</span>}
+                          {watch("tanggalLahirBaru") ? formatDateId(watch("tanggalLahirBaru") as Date) : <span>Pilih tanggal</span>}
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar

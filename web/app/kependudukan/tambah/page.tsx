@@ -8,7 +8,7 @@ import * as z from "zod"
 import { Calendar as CalendarIcon, Loader2, ArrowLeft, Save, Upload, X, Image as ImageIcon, Search, Home, FileText, CheckCircle2 } from "lucide-react"
 import { format } from "date-fns"
 
-import { cn } from "@/lib/utils"
+import { cn, formatDateId } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -430,7 +430,7 @@ export default function TambahPendudukPage() {
                         !watch("tanggalLahir") && "text-muted-foreground"
                       )}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {watch("tanggalLahir") ? format(watch("tanggalLahir"), "PPP") : <span>Pilih tanggal</span>}
+                      {watch("tanggalLahir") ? formatDateId(watch("tanggalLahir")) : <span>Pilih tanggal</span>}
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
