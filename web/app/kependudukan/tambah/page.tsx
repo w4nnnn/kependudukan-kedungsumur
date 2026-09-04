@@ -397,12 +397,13 @@ export default function TambahPendudukPage() {
                 </div>
 
                 {modeKk === "select" ? (
-                  <div className="space-y-3 pt-1">
+                  <div key="mode-select-kk" className="space-y-3 pt-1">
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium">Cari Kartu Keluarga</label>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
+                          key="input-search-kk"
                           placeholder="Ketik 16 digit No KK atau Nama Kepala Keluarga..."
                           className="pl-9 h-9 text-xs"
                           value={kkSearch}
@@ -448,17 +449,23 @@ export default function TambahPendudukPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-4 pt-1">
+                  <div key="mode-create-kk" className="space-y-4 pt-1">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1.5 md:col-span-2">
                         <label className="text-xs font-medium">Nomor Kartu Keluarga (16 Digit)</label>
-                        <Input placeholder="Contoh: 3573010101800001" maxLength={16} {...register("noKk")} />
+                        <Input
+                          key="input-create-nokk"
+                          placeholder="Contoh: 3573010101800001"
+                          maxLength={16}
+                          {...register("noKk")}
+                        />
                         {errors.noKk && <p className="text-xs text-destructive">{errors.noKk.message}</p>}
                       </div>
 
                       <div className="space-y-1.5 md:col-span-2">
                         <label className="text-xs font-medium">Alamat Domisili Keluarga</label>
                         <Input
+                          key="input-create-alamat"
                           placeholder="Nama jalan, gang, atau nomor rumah"
                           {...register("kkAlamat", {
                             onChange: (e) => setValue("alamat", e.target.value),
@@ -469,6 +476,7 @@ export default function TambahPendudukPage() {
                       <div className="space-y-1.5">
                         <label className="text-xs font-medium">RT</label>
                         <Input
+                          key="input-create-rt"
                           placeholder="001"
                           maxLength={3}
                           {...register("kkRt", {
@@ -480,6 +488,7 @@ export default function TambahPendudukPage() {
                       <div className="space-y-1.5">
                         <label className="text-xs font-medium">RW</label>
                         <Input
+                          key="input-create-rw"
                           placeholder="002"
                           maxLength={3}
                           {...register("kkRw", {
@@ -490,12 +499,21 @@ export default function TambahPendudukPage() {
 
                       <div className="space-y-1.5">
                         <label className="text-xs font-medium">Dusun</label>
-                        <Input placeholder="Contoh: Dusun Krajan" {...register("kkDusun")} />
+                        <Input
+                          key="input-create-dusun"
+                          placeholder="Contoh: Dusun Krajan"
+                          {...register("kkDusun")}
+                        />
                       </div>
 
                       <div className="space-y-1.5">
                         <label className="text-xs font-medium">Kode Pos</label>
-                        <Input placeholder="65171" maxLength={10} {...register("kkKodePos")} />
+                        <Input
+                          key="input-create-kodepos"
+                          placeholder="65171"
+                          maxLength={10}
+                          {...register("kkKodePos")}
+                        />
                       </div>
 
                       <div className="flex flex-col space-y-1.5 md:col-span-2">
