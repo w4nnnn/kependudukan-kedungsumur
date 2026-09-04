@@ -35,6 +35,13 @@ const formSchema = z.object({
   statusPerkawinan: z.enum(["Belum Kawin", "Kawin", "Cerai Hidup", "Cerai Mati"], { required_error: "Pilih status perkawinan" }),
   shdk: z.string().min(1, "Pilih status dalam keluarga"),
   pekerjaan: z.string().min(2, "Pekerjaan wajib diisi"),
+
+  kkAlamat: z.string().optional(),
+  kkRt: z.string().optional(),
+  kkRw: z.string().optional(),
+  kkDusun: z.string().optional(),
+  kkKodePos: z.string().optional(),
+  kkTanggalDikeluarkan: z.date().optional(),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -56,7 +63,7 @@ export default function TambahPendudukPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [modeKk, setModeKk] = useState<"select" | "manual">("select")
+  const [modeKk, setModeKk] = useState<"select" | "create">("select")
   const [kkSearch, setKkSearch] = useState("")
   const [kkList, setKkList] = useState<CandidateKK[]>([])
   const [selectedKkId, setSelectedKkId] = useState<string>("")
@@ -133,6 +140,12 @@ export default function TambahPendudukPage() {
       statusPerkawinan: undefined,
       shdk: "KEPALA KELUARGA",
       pekerjaan: "",
+      kkAlamat: "",
+      kkRt: "",
+      kkRw: "",
+      kkDusun: "Dusun Krajan",
+      kkKodePos: "65171",
+      kkTanggalDikeluarkan: undefined,
     },
   })
 
@@ -177,9 +190,51 @@ export default function TambahPendudukPage() {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
       const url = `${baseUrl}/api/penduduk`
       
-      const formattedData = {
-        ...data,
+      const {
+        kkAlamat,
+        kkRt,
+        kkRw,
+        kkDusun,
+        kkKodePos,
+        kkTanggalDikeluarkan,
+        ...pendudukPayload
+      } = data
+
+      let payload: any = {
+        ...pendudukPayload,
         tanggalLahir: format(data.tanggalLahir, "yyyy-MM-dd"),
+      }
+
+      if (modeKk === "select" && selectedKkId) {
+        payload.kartuKeluargaId = selectedKkId
+      } else if (modeKk === "create") {
+        if (!data.noKk || data.noKk.length !== 16) {
+          toast.error("Nomor KK harus 16 digit.")
+          setIsLoading(false)
+          return
+        }
+        if (!kkAlamat || kkAlamat.length < 5) {
+          toast.error("Alamat domisili KK minimal 5 karakter.")
+          setIsLoading(false)
+          return
+        }
+        if (!kkRt || kkRt.length !== 3 || !kkRw || kkRw.length !== 3) {
+          toast.error("RT dan RW Kartu Keluarga harus 3 digit (contoh: 001).")
+          setIsLoading(false)
+          return
+        }
+
+        payload.createKk = {
+          noKk: data.noKk,
+          alamat: kkAlamat,
+          rt: kkRt,
+          rw: kkRw,
+          dusun: kkDusun,
+          kodePos: kkKodePos,
+          tanggalDikeluarkan: kkTanggalDikeluarkan
+            ? format(kkTanggalDikeluarkan, "yyyy-MM-dd")
+            : undefined,
+        }
       }
 
       const response = await fetch(url, {
@@ -188,7 +243,7 @@ export default function TambahPendudukPage() {
           "Content-Type": "application/json",
         },
         credentials: "include", 
-        body: JSON.stringify(formattedData),
+        body: JSON.stringify(payload),
       })
 
       const result = await response.json()
@@ -325,18 +380,18 @@ export default function TambahPendudukPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setModeKk("manual")
+                        setModeKk("create")
                         setSelectedKkId("")
                         setSelectedKkData(null)
                       }}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
-                        modeKk === "manual"
+                        modeKk === "create"
                           ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
                           : "border-border/60 bg-background text-muted-foreground hover:text-foreground"
                       }`}
                     >
                       <FileText className="size-3.5" />
-                      <span>Input No KK Manual</span>
+                      <span>Buat KK Baru Lengkap</span>
                     </button>
                   </div>
                 </div>
@@ -369,7 +424,7 @@ export default function TambahPendudukPage() {
                         <SelectContent className="max-h-56">
                           {kkList.length === 0 ? (
                             <div className="p-3 text-xs text-muted-foreground text-center">
-                              Tidak ada KK ditemukan. Silakan ketik di pencarian atau gunakan mode Input Manual.
+                              Tidak ada KK ditemukan. Silakan ketik di pencarian atau gunakan mode Buat KK Baru Lengkap.
                             </div>
                           ) : (
                             kkList.map((kk) => (
@@ -393,10 +448,77 @@ export default function TambahPendudukPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-1.5 pt-1">
-                    <label className="text-xs font-medium">Nomor Kartu Keluarga (16 Digit)</label>
-                    <Input placeholder="16 Digit No KK" maxLength={16} {...register("noKk")} />
-                    {errors.noKk && <p className="text-xs text-destructive">{errors.noKk.message}</p>}
+                  <div className="space-y-4 pt-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="text-xs font-medium">Nomor Kartu Keluarga (16 Digit)</label>
+                        <Input placeholder="Contoh: 3573010101800001" maxLength={16} {...register("noKk")} />
+                        {errors.noKk && <p className="text-xs text-destructive">{errors.noKk.message}</p>}
+                      </div>
+
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="text-xs font-medium">Alamat Domisili Keluarga</label>
+                        <Input
+                          placeholder="Nama jalan, gang, atau nomor rumah"
+                          {...register("kkAlamat", {
+                            onChange: (e) => setValue("alamat", e.target.value),
+                          })}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium">RT</label>
+                        <Input
+                          placeholder="001"
+                          maxLength={3}
+                          {...register("kkRt", {
+                            onChange: (e) => setValue("rt", e.target.value),
+                          })}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium">RW</label>
+                        <Input
+                          placeholder="002"
+                          maxLength={3}
+                          {...register("kkRw", {
+                            onChange: (e) => setValue("rw", e.target.value),
+                          })}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium">Dusun</label>
+                        <Input placeholder="Contoh: Dusun Krajan" {...register("kkDusun")} />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium">Kode Pos</label>
+                        <Input placeholder="65171" maxLength={10} {...register("kkKodePos")} />
+                      </div>
+
+                      <div className="flex flex-col space-y-1.5 md:col-span-2">
+                        <label className="text-xs font-medium">Tanggal Dikeluarkan KK (Opsional)</label>
+                        <Popover>
+                          <PopoverTrigger className={cn(
+                              "w-full h-9 justify-start text-left font-normal inline-flex items-center rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+                              !watch("kkTanggalDikeluarkan") && "text-muted-foreground"
+                            )}>
+                            <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                            {watch("kkTanggalDikeluarkan") ? formatDateId(watch("kkTanggalDikeluarkan") as Date) : <span>Pilih tanggal terbit KK</span>}
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              captionLayout="dropdown"
+                              selected={watch("kkTanggalDikeluarkan") as Date}
+                              onSelect={(date) => setValue("kkTanggalDikeluarkan", date as Date)}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

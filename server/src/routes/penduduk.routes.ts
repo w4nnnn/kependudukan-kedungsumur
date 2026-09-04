@@ -138,13 +138,62 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.post<{ Body: PendudukInsert }>("/api/penduduk", async (request, reply) => {
+  fastify.post<{
+    Body: PendudukInsert & {
+      createKk?: {
+        noKk: string;
+        alamat: string;
+        rt: string;
+        rw: string;
+        dusun?: string;
+        kodePos?: string;
+        tanggalDikeluarkan?: string;
+      };
+    };
+  }>("/api/penduduk", async (request, reply) => {
     try {
-      const body = request.body;
-      
-      const noKkHash = hashKependudukan(body.noKk);
+      const { createKk, ...body } = request.body as any;
 
       let kartuKeluargaId = body.kartuKeluargaId;
+      let noKk = body.noKk;
+
+      if (createKk) {
+        if (!createKk.noKk || createKk.noKk.length !== 16) {
+          return reply.status(400).send({ success: false, message: "Nomor KK harus 16 digit." });
+        }
+        noKk = createKk.noKk;
+        const newKkHash = hashKependudukan(createKk.noKk);
+
+        const existingKk = await db
+          .select()
+          .from(kartuKeluargaTable)
+          .where(eq(kartuKeluargaTable.noKkHash, newKkHash));
+        if (existingKk.length > 0) {
+          return reply.status(400).send({ success: false, message: "Nomor KK sudah terdaftar." });
+        }
+
+        const insertedKk = await db
+          .insert(kartuKeluargaTable)
+          .values({
+            noKk: createKk.noKk,
+            noKkHash: newKkHash,
+            alamat: createKk.alamat || body.alamat,
+            rt: createKk.rt || body.rt,
+            rw: createKk.rw || body.rw,
+            dusun: createKk.dusun || null,
+            kodePos: createKk.kodePos || null,
+            tanggalDikeluarkan: createKk.tanggalDikeluarkan || null,
+          })
+          .returning();
+
+        if (!insertedKk[0]) {
+          return reply.status(500).send({ success: false, message: "Gagal membuat data Kartu Keluarga." });
+        }
+        kartuKeluargaId = insertedKk[0].id;
+      }
+
+      const noKkHash = hashKependudukan(noKk);
+
       if (!kartuKeluargaId) {
         const existingKk = await db
           .select()
@@ -157,6 +206,7 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
 
       const newPendudukData = {
         ...body,
+        noKk,
         kartuKeluargaId,
         nikHash: hashKependudukan(body.nik),
         noKkHash: noKkHash,
