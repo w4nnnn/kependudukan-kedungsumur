@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Calendar as CalendarIcon, Loader2, ArrowLeft, Save, Upload, X, Image as ImageIcon } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, ArrowLeft, Save, Upload, X, Image as ImageIcon, Search, Home, FileText, CheckCircle2 } from "lucide-react"
 import { format } from "date-fns"
 
 import { cn } from "@/lib/utils"
@@ -39,12 +39,78 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 
+interface CandidateKK {
+  id: string
+  noKk: string
+  kepalaKeluargaNama: string | null
+  alamat: string
+  rt: string
+  rw: string
+  dusun?: string | null
+}
+
 export default function TambahPendudukPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [modeKk, setModeKk] = useState<"select" | "manual">("select")
+  const [kkSearch, setKkSearch] = useState("")
+  const [kkList, setKkList] = useState<CandidateKK[]>([])
+  const [selectedKkId, setSelectedKkId] = useState<string>("")
+  const [selectedKkData, setSelectedKkData] = useState<CandidateKK | null>(null)
+  const [isLoadingKk, setIsLoadingKk] = useState(false)
+
+  useEffect(() => {
+    if (modeKk !== "select") return
+
+    const fetchKkOptions = async () => {
+      setIsLoadingKk(true)
+      try {
+        const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/kk`)
+        url.searchParams.append("limit", "10")
+        if (kkSearch) {
+          if (/^\d{16}$/.test(kkSearch)) {
+            url.searchParams.append("nokk", kkSearch)
+          } else {
+            url.searchParams.append("search", kkSearch)
+          }
+        }
+        const res = await fetch(url.toString(), { credentials: "include" })
+        if (res.ok) {
+          const json = await res.json()
+          if (json.success) {
+            setKkList(json.data)
+          }
+        }
+      } catch (error) {
+        console.error("Gagal memuat daftar KK", error)
+      } finally {
+        setIsLoadingKk(false)
+      }
+    }
+
+    const timer = setTimeout(fetchKkOptions, 300)
+    return () => clearTimeout(timer)
+  }, [modeKk, kkSearch])
+
+  const handleSelectKk = (kkId: string | null) => {
+    if (!kkId) return
+    setSelectedKkId(kkId)
+    const found = kkList.find((item) => item.id === kkId)
+    if (found) {
+      setSelectedKkData(found)
+      setValue("noKk", found.noKk, { shouldValidate: true })
+      setValue("alamat", found.alamat, { shouldValidate: true })
+      setValue("rt", found.rt, { shouldValidate: true })
+      setValue("rw", found.rw, { shouldValidate: true })
+      toast.success("Data Kartu Keluarga dipilih", {
+        description: `Nomor KK ${found.noKk} dan alamat berhasil diisikan.`,
+      })
+    }
+  }
 
   const {
     register,
@@ -237,18 +303,109 @@ export default function TambahPendudukPage() {
                 </div>
               </div>
 
+              <div className="space-y-4 p-4 rounded-xl border bg-muted/20">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b pb-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Pengaturan Kartu Keluarga (KK)</h3>
+                    <p className="text-xs text-muted-foreground">Tentukan Kartu Keluarga tempat penduduk ini terdaftar.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setModeKk("select")}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                        modeKk === "select"
+                          ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
+                          : "border-border/60 bg-background text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Home className="size-3.5" />
+                      <span>Pilih KK Terdaftar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModeKk("manual")
+                        setSelectedKkId("")
+                        setSelectedKkData(null)
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                        modeKk === "manual"
+                          ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
+                          : "border-border/60 bg-background text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <FileText className="size-3.5" />
+                      <span>Input No KK Manual</span>
+                    </button>
+                  </div>
+                </div>
+
+                {modeKk === "select" ? (
+                  <div className="space-y-3 pt-1">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium">Cari Kartu Keluarga</label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Ketik 16 digit No KK atau Nama Kepala Keluarga..."
+                          className="pl-9 h-9 text-xs"
+                          value={kkSearch}
+                          onChange={(e) => setKkSearch(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium">Pilih dari Hasil Pencarian</label>
+                      <Select
+                        value={selectedKkId}
+                        onValueChange={handleSelectKk}
+                        disabled={isLoadingKk}
+                      >
+                        <SelectTrigger className="w-full text-xs h-9">
+                          <SelectValue placeholder={isLoadingKk ? "Memuat data KK..." : "-- Pilih Kartu Keluarga Terdaftar --"} />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-56">
+                          {kkList.length === 0 ? (
+                            <div className="p-3 text-xs text-muted-foreground text-center">
+                              Tidak ada KK ditemukan. Silakan ketik di pencarian atau gunakan mode Input Manual.
+                            </div>
+                          ) : (
+                            kkList.map((kk) => (
+                              <SelectItem key={kk.id} value={kk.id} className="text-xs">
+                                No KK: {kk.noKk} - Kepala: {kk.kepalaKeluargaNama || "Belum ada"} (RT {kk.rt}/RW {kk.rw}, {kk.alamat})
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {errors.noKk && <p className="text-xs text-destructive">{errors.noKk.message}</p>}
+                    </div>
+
+                    {selectedKkData && (
+                      <div className="flex items-center gap-2 p-2.5 rounded-lg border border-primary/30 bg-primary/5 text-xs text-foreground">
+                        <CheckCircle2 className="size-4 text-primary shrink-0" />
+                        <div>
+                          <span className="font-semibold">KK Terpilih:</span> {selectedKkData.noKk} ({selectedKkData.alamat}, RT {selectedKkData.rt}/RW {selectedKkData.rw})
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 pt-1">
+                    <label className="text-xs font-medium">Nomor Kartu Keluarga (16 Digit)</label>
+                    <Input placeholder="16 Digit No KK" maxLength={16} {...register("noKk")} />
+                    {errors.noKk && <p className="text-xs text-destructive">{errors.noKk.message}</p>}
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* NIK & KK */}
-                <div className="space-y-2">
+                <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-medium">Nomor Induk Kependudukan (NIK)</label>
                   <Input placeholder="16 Digit NIK" maxLength={16} {...register("nik")} />
                   {errors.nik && <p className="text-sm text-destructive">{errors.nik.message}</p>}
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Nomor Kartu Keluarga (KK)</label>
-                  <Input placeholder="16 Digit No KK" maxLength={16} {...register("noKk")} />
-                  {errors.noKk && <p className="text-sm text-destructive">{errors.noKk.message}</p>}
                 </div>
 
                 {/* Nama Lengkap */}
