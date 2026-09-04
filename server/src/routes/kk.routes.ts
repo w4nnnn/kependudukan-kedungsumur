@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
 import { kartuKeluargaTable, pendudukTable, hashKependudukan } from "../db/schema/schema.js";
-import { eq, ilike, and, sql, asc } from "drizzle-orm";
+import { eq, ilike, and, sql, asc, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 import { getPublicFotoUrl } from "../lib/minio.js";
 
@@ -69,6 +69,7 @@ export default async function kkRoutes(fastify: FastifyInstance) {
         .from(kartuKeluargaTable)
         .leftJoin(pendudukTable, eq(kartuKeluargaTable.kepalaKeluargaId, pendudukTable.id))
         .where(whereCondition)
+        .orderBy(desc(kartuKeluargaTable.createdAt))
         .limit(Number(limit))
         .offset(offset);
 

@@ -1,4 +1,4 @@
-import { pgTable, varchar, date, uuid, customType, index } from "drizzle-orm/pg-core";
+import { pgTable, varchar, date, uuid, customType, index, timestamp } from "drizzle-orm/pg-core";
 import { createHash, randomBytes, createCipheriv, createDecipheriv } from "crypto";
 import "dotenv/config";
 
@@ -55,10 +55,16 @@ export const kartuKeluargaTable = pgTable(
     dusun: varchar("dusun", { length: 100 }),
     kodePos: varchar("kode_pos", { length: 10 }),
     tanggalDikeluarkan: date("tanggal_dikeluarkan"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
   },
   (table) => [
     index("idx_kk_nokk_hash").on(table.noKkHash),
     index("idx_kk_rt_rw").on(table.rt, table.rw),
+    index("idx_kk_created_at").on(table.createdAt),
   ]
 );
 
@@ -92,11 +98,17 @@ export const pendudukTable = pgTable(
     golonganDarah: varchar("golongan_darah", { length: 5 }),
     pekerjaan: varchar("pekerjaan", { length: 100 }),
     foto: varchar("foto", { length: 500 }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
   },
   (table) => [
     index("idx_penduduk_nama").on(table.namaLengkap),
     index("idx_penduduk_rt_rw").on(table.rt, table.rw),
     index("idx_penduduk_nokk_hash").on(table.noKkHash),
     index("idx_penduduk_kk_id").on(table.kartuKeluargaId),
+    index("idx_penduduk_created_at").on(table.createdAt),
   ]
 );
