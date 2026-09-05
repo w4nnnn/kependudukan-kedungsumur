@@ -10,6 +10,7 @@ import type { KartuKeluargaDetail, AnggotaPenduduk } from "@/components/kk/types
 import { KkDetailHeader } from "@/components/kk/kk-detail-header"
 import { KkDetailCard } from "@/components/kk/kk-detail-card"
 import { KkAnggotaTable } from "@/components/kk/kk-anggota-table"
+import { KkTambahAnggotaCard } from "@/components/kk/kk-tambah-anggota-card"
 import { KkRemoveAnggotaDialog } from "@/components/kk/kk-remove-anggota-dialog"
 
 export default function DetailKartuKeluargaPage() {
@@ -19,6 +20,7 @@ export default function DetailKartuKeluargaPage() {
 
   const [data, setData] = useState<KartuKeluargaDetail | null>(null)
   const [isFetching, setIsFetching] = useState(true)
+  const [isAddingAnggota, setIsAddingAnggota] = useState(false)
   const [removeCandidate, setRemoveCandidate] = useState<AnggotaPenduduk | null>(null)
   const [isRemoving, setIsRemoving] = useState(false)
 
@@ -105,14 +107,28 @@ export default function DetailKartuKeluargaPage() {
       <div className="mx-auto w-full max-w-5xl space-y-6">
         <KkDetailHeader
           kkId={data.id}
+          isAddingAnggota={isAddingAnggota}
           onBack={() => router.push("/kk")}
           onPrint={() => window.print()}
           onEdit={() => router.push(`/kk/edit/${data.id}`)}
-          onTambahAnggota={() => router.push(`/kk/${data.id}/anggota/tambah`)}
+          onToggleTambahAnggota={() => setIsAddingAnggota((prev) => !prev)}
         />
 
         <div className="space-y-6">
           <KkDetailCard data={data} />
+
+          {isAddingAnggota && (
+            <KkTambahAnggotaCard
+              kkId={data.id}
+              nextUrutan={data.anggota.length + 1}
+              onSuccess={() => {
+                fetchKKDetail()
+                setIsAddingAnggota(false)
+              }}
+              onCancel={() => setIsAddingAnggota(false)}
+            />
+          )}
+
           <Card className="border shadow-xs">
             <CardContent className="pt-6">
               <KkAnggotaTable

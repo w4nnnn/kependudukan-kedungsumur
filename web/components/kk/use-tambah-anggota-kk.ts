@@ -23,10 +23,14 @@ interface KKInfo {
   kepalaKeluargaNama?: string | null
 }
 
-export function useTambahAnggotaKk(kkId: string | undefined) {
+export function useTambahAnggotaKk(
+  kkId: string | undefined,
+  initialUrutan?: number,
+  onSuccess?: () => void
+) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [isFetchingKK, setIsFetchingKK] = useState(true)
+  const [isFetchingKK, setIsFetchingKK] = useState(false)
   const [kkInfo, setKkInfo] = useState<KKInfo | null>(null)
 
   const [mode, setMode] = useState<"select" | "create">("select")
@@ -43,7 +47,7 @@ export function useTambahAnggotaKk(kkId: string | undefined) {
       mode: "select",
       selectedPendudukId: "",
       shdk: "ANAK",
-      urutanKk: "1",
+      urutanKk: initialUrutan ? String(initialUrutan) : "1",
       nik: "",
       namaLengkap: "",
       tempatLahir: "Kedungsumur",
@@ -55,43 +59,35 @@ export function useTambahAnggotaKk(kkId: string | undefined) {
     },
   })
 
-  const { setValue } = form
+  const { setValue, reset } = form
+
+  const resetForm = () => {
+    reset({
+      mode: "select",
+      selectedPendudukId: "",
+      shdk: "ANAK",
+      urutanKk: initialUrutan ? String(initialUrutan) : "1",
+      nik: "",
+      namaLengkap: "",
+      tempatLahir: "Kedungsumur",
+      tanggalLahir: undefined,
+      jenisKelamin: "Laki-laki",
+      agama: "Islam",
+      statusPerkawinan: "Belum Kawin",
+      pekerjaan: "",
+    })
+    setMode("select")
+    setCandidateSearch("")
+    setSelectedCandidate(null)
+    setSelectedFile(null)
+    setPreviewUrl(null)
+  }
 
   useEffect(() => {
-    if (!kkId) return
-    const fetchKK = async () => {
-      setIsFetchingKK(true)
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/kk/${kkId}`, {
-          credentials: "include",
-        })
-        const json = await res.json()
-        if (res.ok && json.success) {
-          setKkInfo({
-            id: json.data.id,
-            noKk: json.data.noKk,
-            alamat: json.data.alamat,
-            rt: json.data.rt,
-            rw: json.data.rw,
-            dusun: json.data.dusun,
-            jumlahAnggota: json.data.anggota?.length || 0,
-            kepalaKeluargaNama: json.data.kepalaKeluarga?.namaLengkap || "Belum ada",
-          })
-          const nextUrutan = String((json.data.anggota?.length || 0) + 1)
-          setValue("urutanKk", nextUrutan)
-        } else {
-          toast.error("Gagal memuat data Kartu Keluarga")
-          router.push("/kk")
-        }
-      } catch {
-        toast.error("Kesalahan jaringan")
-      } finally {
-        setIsFetchingKK(false)
-      }
+    if (initialUrutan) {
+      setValue("urutanKk", String(initialUrutan))
     }
-
-    fetchKK()
-  }, [kkId, router, setValue])
+  }, [initialUrutan, setValue])
 
   useEffect(() => {
     if (mode !== "select") return
@@ -211,7 +207,13 @@ export function useTambahAnggotaKk(kkId: string | undefined) {
         }
 
         toast.success("Berhasil", { description: "Anggota keluarga baru berhasil ditambahkan." })
-        router.push(`/kk/${kkId}`)
+        resetForm()
+
+        if (onSuccess) {
+          onSuccess()
+        } else {
+          router.push(`/kk/${kkId}`)
+        }
       } else {
         toast.error("Gagal menambahkan anggota", { description: json.message || "Terjadi kesalahan sistem." })
       }
@@ -238,5 +240,6 @@ export function useTambahAnggotaKk(kkId: string | undefined) {
     setSelectedFile,
     handleSelectCandidate,
     onSubmit,
+    resetForm,
   }
 }

@@ -1,21 +1,23 @@
 "use client"
 
-import { ArrowLeft, Printer, Pencil, Plus } from "lucide-react"
+import { ArrowLeft, Printer, Pencil, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface KkDetailHeaderProps {
   kkId: string
+  isAddingAnggota?: boolean
   onBack: () => void
   onPrint: () => void
   onEdit: () => void
-  onTambahAnggota: () => void
+  onToggleTambahAnggota: () => void
 }
 
 export function KkDetailHeader({
+  isAddingAnggota = false,
   onBack,
   onPrint,
   onEdit,
-  onTambahAnggota,
+  onToggleTambahAnggota,
 }: KkDetailHeaderProps) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 print:hidden">
@@ -39,9 +41,13 @@ export function KkDetailHeader({
           <Pencil className="h-4 w-4" />
           Edit KK
         </Button>
-        <Button onClick={onTambahAnggota} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Tambah Anggota
+        <Button
+          onClick={onToggleTambahAnggota}
+          className="gap-2"
+          variant={isAddingAnggota ? "secondary" : "default"}
+        >
+          {isAddingAnggota ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          {isAddingAnggota ? "Tutup Formulir" : "Tambah Anggota"}
         </Button>
       </div>
     </div>
