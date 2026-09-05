@@ -9,6 +9,18 @@ import { Calendar as CalendarIcon, Loader2, ArrowLeft, Save, Upload, X, Image as
 import { format } from "date-fns"
 
 import { cn, formatDateId } from "@/lib/utils"
+import {
+  REGEX_NIK,
+  REGEX_NO_KK,
+  REGEX_RT_RW,
+  REGEX_KODE_POS,
+  REGEX_NAMA,
+  REGEX_TEMPAT_LAHIR,
+  REGEX_ALAMAT,
+  REGEX_PEKERJAAN,
+  REGEX_DUSUN,
+  blockNonNumericKeyDown,
+} from "@/lib/validation"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -20,27 +32,76 @@ import { authClient } from "@/lib/auth-client"
 import { toast } from "sonner"
 
 const formSchema = z.object({
-  nik: z.string().length(16, "NIK harus tepat 16 digit"),
-  noKk: z.string().length(16, "No KK harus tepat 16 digit"),
-  namaLengkap: z.string().min(3, "Nama Lengkap minimal 3 karakter"),
-  tempatLahir: z.string().min(3, "Tempat Lahir minimal 3 karakter"),
+  nik: z
+    .string()
+    .length(16, "NIK harus tepat 16 digit")
+    .regex(REGEX_NIK, "NIK hanya boleh berisi 16 digit angka"),
+  noKk: z
+    .string()
+    .length(16, "Nomor KK harus tepat 16 digit")
+    .regex(REGEX_NO_KK, "Nomor KK hanya boleh berisi 16 digit angka"),
+  namaLengkap: z
+    .string()
+    .min(3, "Nama Lengkap minimal 3 karakter")
+    .regex(REGEX_NAMA, "Nama hanya boleh berisi huruf, spasi, titik, atau tanda petik"),
+  tempatLahir: z
+    .string()
+    .min(3, "Tempat Lahir minimal 3 karakter")
+    .regex(REGEX_TEMPAT_LAHIR, "Tempat lahir hanya boleh berisi huruf dan spasi"),
   tanggalLahir: z.date({
     required_error: "Pilih tanggal lahir",
   }),
   jenisKelamin: z.enum(["Laki-laki", "Perempuan"], { required_error: "Pilih jenis kelamin" }),
-  alamat: z.string().min(5, "Alamat minimal 5 karakter"),
-  rt: z.string().length(3, "RT harus 3 digit (contoh: 001)"),
-  rw: z.string().length(3, "RW harus 3 digit (contoh: 002)"),
+  alamat: z
+    .string()
+    .min(5, "Alamat minimal 5 karakter")
+    .regex(REGEX_ALAMAT, "Alamat mengandung simbol yang tidak valid"),
+  rt: z
+    .string()
+    .length(3, "RT harus 3 digit (contoh: 001)")
+    .regex(REGEX_RT_RW, "RT harus berupa 3 digit angka"),
+  rw: z
+    .string()
+    .length(3, "RW harus 3 digit (contoh: 002)")
+    .regex(REGEX_RT_RW, "RW harus berupa 3 digit angka"),
   agama: z.enum(["Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu"], { required_error: "Pilih agama" }),
   statusPerkawinan: z.enum(["Belum Kawin", "Kawin", "Cerai Hidup", "Cerai Mati"], { required_error: "Pilih status perkawinan" }),
   shdk: z.string().min(1, "Pilih status dalam keluarga"),
-  pekerjaan: z.string().min(2, "Pekerjaan wajib diisi"),
+  pekerjaan: z
+    .string()
+    .min(2, "Pekerjaan wajib diisi")
+    .regex(REGEX_PEKERJAAN, "Pekerjaan mengandung simbol yang tidak valid"),
 
-  kkAlamat: z.string().optional(),
-  kkRt: z.string().optional(),
-  kkRw: z.string().optional(),
-  kkDusun: z.string().optional(),
-  kkKodePos: z.string().optional(),
+  kkAlamat: z
+    .string()
+    .optional()
+    .refine((val) => !val || REGEX_ALAMAT.test(val), {
+      message: "Alamat KK mengandung simbol yang tidak valid",
+    }),
+  kkRt: z
+    .string()
+    .optional()
+    .refine((val) => !val || REGEX_RT_RW.test(val), {
+      message: "RT KK harus 3 digit angka",
+    }),
+  kkRw: z
+    .string()
+    .optional()
+    .refine((val) => !val || REGEX_RT_RW.test(val), {
+      message: "RW KK harus 3 digit angka",
+    }),
+  kkDusun: z
+    .string()
+    .optional()
+    .refine((val) => !val || REGEX_DUSUN.test(val), {
+      message: "Dusun mengandung simbol yang tidak valid",
+    }),
+  kkKodePos: z
+    .string()
+    .optional()
+    .refine((val) => !val || REGEX_KODE_POS.test(val), {
+      message: "Kode Pos harus 5 digit angka",
+    }),
   kkTanggalDikeluarkan: z.date().optional(),
 })
 
@@ -391,7 +452,7 @@ export default function TambahPendudukPage() {
                       }`}
                     >
                       <FileText className="size-3.5" />
-                      <span>Buat KK Baru Lengkap</span>
+                      <span>Buat KK Baru</span>
                     </button>
                   </div>
                 </div>
@@ -457,6 +518,7 @@ export default function TambahPendudukPage() {
                           key="input-create-nokk"
                           placeholder="Contoh: 3573010101800001"
                           maxLength={16}
+                          onKeyDown={blockNonNumericKeyDown}
                           {...register("noKk")}
                         />
                         {errors.noKk && <p className="text-xs text-destructive">{errors.noKk.message}</p>}
@@ -479,6 +541,7 @@ export default function TambahPendudukPage() {
                           key="input-create-rt"
                           placeholder="001"
                           maxLength={3}
+                          onKeyDown={blockNonNumericKeyDown}
                           {...register("kkRt", {
                             onChange: (e) => setValue("rt", e.target.value),
                           })}
@@ -491,6 +554,7 @@ export default function TambahPendudukPage() {
                           key="input-create-rw"
                           placeholder="002"
                           maxLength={3}
+                          onKeyDown={blockNonNumericKeyDown}
                           {...register("kkRw", {
                             onChange: (e) => setValue("rw", e.target.value),
                           })}
@@ -512,6 +576,7 @@ export default function TambahPendudukPage() {
                           key="input-create-kodepos"
                           placeholder="65171"
                           maxLength={10}
+                          onKeyDown={blockNonNumericKeyDown}
                           {...register("kkKodePos")}
                         />
                       </div>
@@ -544,7 +609,12 @@ export default function TambahPendudukPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-medium">Nomor Induk Kependudukan (NIK)</label>
-                  <Input placeholder="16 Digit NIK" maxLength={16} {...register("nik")} />
+                  <Input
+                    placeholder="16 Digit NIK"
+                    maxLength={16}
+                    onKeyDown={blockNonNumericKeyDown}
+                    {...register("nik")}
+                  />
                   {errors.nik && <p className="text-sm text-destructive">{errors.nik.message}</p>}
                 </div>
 
@@ -687,13 +757,23 @@ export default function TambahPendudukPage() {
                 {/* RT & RW */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">RT</label>
-                  <Input placeholder="001" maxLength={3} {...register("rt")} />
+                  <Input
+                    placeholder="001"
+                    maxLength={3}
+                    onKeyDown={blockNonNumericKeyDown}
+                    {...register("rt")}
+                  />
                   {errors.rt && <p className="text-sm text-destructive">{errors.rt.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">RW</label>
-                  <Input placeholder="002" maxLength={3} {...register("rw")} />
+                  <Input
+                    placeholder="002"
+                    maxLength={3}
+                    onKeyDown={blockNonNumericKeyDown}
+                    {...register("rw")}
+                  />
                   {errors.rw && <p className="text-sm text-destructive">{errors.rw.message}</p>}
                 </div>
               </div>

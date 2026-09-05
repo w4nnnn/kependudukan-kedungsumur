@@ -9,6 +9,14 @@ import { Calendar as CalendarIcon, Loader2, ArrowLeft, Save } from "lucide-react
 import { format, parseISO } from "date-fns"
 
 import { cn, formatDateId } from "@/lib/utils"
+import {
+  REGEX_NO_KK,
+  REGEX_RT_RW,
+  REGEX_KODE_POS,
+  REGEX_ALAMAT,
+  REGEX_DUSUN,
+  blockNonNumericKeyDown,
+} from "@/lib/validation"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -17,12 +25,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner"
 
 const formSchema = z.object({
-  noKk: z.string().length(16, "Nomor KK harus tepat 16 digit"),
-  alamat: z.string().min(5, "Alamat minimal 5 karakter"),
-  rt: z.string().length(3, "RT harus 3 digit (contoh: 001)"),
-  rw: z.string().length(3, "RW harus 3 digit (contoh: 002)"),
-  dusun: z.string().optional(),
-  kodePos: z.string().optional(),
+  noKk: z
+    .string()
+    .length(16, "Nomor KK harus tepat 16 digit")
+    .regex(REGEX_NO_KK, "Nomor KK hanya boleh berisi 16 digit angka"),
+  alamat: z
+    .string()
+    .min(5, "Alamat minimal 5 karakter")
+    .regex(REGEX_ALAMAT, "Alamat mengandung simbol yang tidak valid"),
+  rt: z
+    .string()
+    .length(3, "RT harus 3 digit (contoh: 001)")
+    .regex(REGEX_RT_RW, "RT harus berupa 3 digit angka"),
+  rw: z
+    .string()
+    .length(3, "RW harus 3 digit (contoh: 002)")
+    .regex(REGEX_RT_RW, "RW harus berupa 3 digit angka"),
+  dusun: z
+    .string()
+    .optional()
+    .refine((val) => !val || REGEX_DUSUN.test(val), {
+      message: "Dusun mengandung simbol yang tidak valid",
+    }),
+  kodePos: z
+    .string()
+    .optional()
+    .refine((val) => !val || REGEX_KODE_POS.test(val), {
+      message: "Kode Pos harus 5 digit angka",
+    }),
   tanggalDikeluarkan: z.date().optional(),
 })
 
@@ -176,7 +206,12 @@ export default function EditKartuKeluargaPage() {
                 {/* No KK */}
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-medium">Nomor Kartu Keluarga (16 Digit)</label>
-                  <Input placeholder="Contoh: 3573010101800001" maxLength={16} {...register("noKk")} />
+                  <Input
+                    placeholder="Contoh: 3573010101800001"
+                    maxLength={16}
+                    onKeyDown={blockNonNumericKeyDown}
+                    {...register("noKk")}
+                  />
                   {errors.noKk && <p className="text-sm text-destructive">{errors.noKk.message}</p>}
                 </div>
 
@@ -190,13 +225,23 @@ export default function EditKartuKeluargaPage() {
                 {/* RT & RW */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">RT</label>
-                  <Input placeholder="001" maxLength={3} {...register("rt")} />
+                  <Input
+                    placeholder="001"
+                    maxLength={3}
+                    onKeyDown={blockNonNumericKeyDown}
+                    {...register("rt")}
+                  />
                   {errors.rt && <p className="text-sm text-destructive">{errors.rt.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">RW</label>
-                  <Input placeholder="002" maxLength={3} {...register("rw")} />
+                  <Input
+                    placeholder="002"
+                    maxLength={3}
+                    onKeyDown={blockNonNumericKeyDown}
+                    {...register("rw")}
+                  />
                   {errors.rw && <p className="text-sm text-destructive">{errors.rw.message}</p>}
                 </div>
 
@@ -204,12 +249,19 @@ export default function EditKartuKeluargaPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Dusun</label>
                   <Input placeholder="Contoh: Dusun Krajan" {...register("dusun")} />
+                  {errors.dusun && <p className="text-sm text-destructive">{errors.dusun.message}</p>}
                 </div>
 
                 {/* Kode Pos */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Kode Pos</label>
-                  <Input placeholder="65171" maxLength={10} {...register("kodePos")} />
+                  <Input
+                    placeholder="65171"
+                    maxLength={10}
+                    onKeyDown={blockNonNumericKeyDown}
+                    {...register("kodePos")}
+                  />
+                  {errors.kodePos && <p className="text-sm text-destructive">{errors.kodePos.message}</p>}
                 </div>
 
                 {/* Tanggal Dikeluarkan */}

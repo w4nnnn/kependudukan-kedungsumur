@@ -9,6 +9,18 @@ import { Calendar as CalendarIcon, Loader2, ArrowLeft, Save, UserCheck, UserPlus
 import { format } from "date-fns"
 
 import { cn, formatDateId } from "@/lib/utils"
+import {
+  REGEX_NIK,
+  REGEX_NO_KK,
+  REGEX_RT_RW,
+  REGEX_KODE_POS,
+  REGEX_NAMA,
+  REGEX_TEMPAT_LAHIR,
+  REGEX_ALAMAT,
+  REGEX_PEKERJAAN,
+  REGEX_DUSUN,
+  blockNonNumericKeyDown,
+} from "@/lib/validation"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -18,27 +30,67 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { toast } from "sonner"
 
 const formSchema = z.object({
-  noKk: z.string().length(16, "Nomor KK harus tepat 16 digit"),
-  alamat: z.string().min(5, "Alamat minimal 5 karakter"),
-  rt: z.string().length(3, "RT harus 3 digit (contoh: 001)"),
-  rw: z.string().length(3, "RW harus 3 digit (contoh: 002)"),
-  dusun: z.string().optional(),
-  kodePos: z.string().optional(),
+  noKk: z
+    .string()
+    .length(16, "Nomor KK harus tepat 16 digit")
+    .regex(REGEX_NO_KK, "Nomor KK hanya boleh berisi 16 digit angka"),
+  alamat: z
+    .string()
+    .min(5, "Alamat minimal 5 karakter")
+    .regex(REGEX_ALAMAT, "Alamat mengandung simbol yang tidak valid"),
+  rt: z
+    .string()
+    .length(3, "RT harus 3 digit (contoh: 001)")
+    .regex(REGEX_RT_RW, "RT harus berupa 3 digit angka"),
+  rw: z
+    .string()
+    .length(3, "RW harus 3 digit (contoh: 002)")
+    .regex(REGEX_RT_RW, "RW harus berupa 3 digit angka"),
+  dusun: z
+    .string()
+    .optional()
+    .refine((val) => !val || REGEX_DUSUN.test(val), {
+      message: "Dusun mengandung simbol yang tidak valid",
+    }),
+  kodePos: z
+    .string()
+    .optional()
+    .refine((val) => !val || REGEX_KODE_POS.test(val), {
+      message: "Kode Pos harus 5 digit angka",
+    }),
   tanggalDikeluarkan: z.date().optional(),
 
-  // Opsi Anggota / Kepala Keluarga
   modeKepala: z.enum(["none", "select", "create"]),
   selectedPendudukId: z.string().optional(),
 
-  // Input data penduduk baru jika modeKepala === 'create'
-  nikBaru: z.string().optional(),
-  namaBaru: z.string().optional(),
-  tempatLahirBaru: z.string().optional(),
+  nikBaru: z
+    .string()
+    .optional()
+    .refine((val) => !val || REGEX_NIK.test(val), {
+      message: "NIK hanya boleh berisi 16 digit angka",
+    }),
+  namaBaru: z
+    .string()
+    .optional()
+    .refine((val) => !val || REGEX_NAMA.test(val), {
+      message: "Nama hanya boleh berisi huruf, spasi, titik, atau tanda petik",
+    }),
+  tempatLahirBaru: z
+    .string()
+    .optional()
+    .refine((val) => !val || REGEX_TEMPAT_LAHIR.test(val), {
+      message: "Tempat lahir hanya boleh berisi huruf dan spasi",
+    }),
   tanggalLahirBaru: z.date().optional(),
   jenisKelaminBaru: z.enum(["Laki-laki", "Perempuan"]).optional(),
   agamaBaru: z.enum(["Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu"]).optional(),
   statusPerkawinanBaru: z.enum(["Belum Kawin", "Kawin", "Cerai Hidup", "Cerai Mati"]).optional(),
-  pekerjaanBaru: z.string().optional(),
+  pekerjaanBaru: z
+    .string()
+    .optional()
+    .refine((val) => !val || REGEX_PEKERJAAN.test(val), {
+      message: "Pekerjaan mengandung simbol yang tidak valid",
+    }),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -233,7 +285,12 @@ export default function TambahKartuKeluargaPage() {
                 {/* No KK */}
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-medium">Nomor Kartu Keluarga (16 Digit)</label>
-                  <Input placeholder="Contoh: 3573010101800001" maxLength={16} {...register("noKk")} />
+                  <Input
+                    placeholder="Contoh: 3573010101800001"
+                    maxLength={16}
+                    onKeyDown={blockNonNumericKeyDown}
+                    {...register("noKk")}
+                  />
                   {errors.noKk && <p className="text-sm text-destructive">{errors.noKk.message}</p>}
                 </div>
 
@@ -247,13 +304,23 @@ export default function TambahKartuKeluargaPage() {
                 {/* RT & RW */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">RT</label>
-                  <Input placeholder="001" maxLength={3} {...register("rt")} />
+                  <Input
+                    placeholder="001"
+                    maxLength={3}
+                    onKeyDown={blockNonNumericKeyDown}
+                    {...register("rt")}
+                  />
                   {errors.rt && <p className="text-sm text-destructive">{errors.rt.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">RW</label>
-                  <Input placeholder="002" maxLength={3} {...register("rw")} />
+                  <Input
+                    placeholder="002"
+                    maxLength={3}
+                    onKeyDown={blockNonNumericKeyDown}
+                    {...register("rw")}
+                  />
                   {errors.rw && <p className="text-sm text-destructive">{errors.rw.message}</p>}
                 </div>
 
@@ -261,12 +328,19 @@ export default function TambahKartuKeluargaPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Dusun</label>
                   <Input placeholder="Contoh: Dusun Krajan" {...register("dusun")} />
+                  {errors.dusun && <p className="text-sm text-destructive">{errors.dusun.message}</p>}
                 </div>
 
                 {/* Kode Pos */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Kode Pos</label>
-                  <Input placeholder="65171" maxLength={10} {...register("kodePos")} />
+                  <Input
+                    placeholder="65171"
+                    maxLength={10}
+                    onKeyDown={blockNonNumericKeyDown}
+                    {...register("kodePos")}
+                  />
+                  {errors.kodePos && <p className="text-sm text-destructive">{errors.kodePos.message}</p>}
                 </div>
 
                 {/* Tanggal Dikeluarkan */}
@@ -388,17 +462,25 @@ export default function TambahKartuKeluargaPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium">NIK Kepala Keluarga (16 Digit)</label>
-                      <Input placeholder="16 Digit NIK" maxLength={16} {...register("nikBaru")} />
+                      <Input
+                        placeholder="16 Digit NIK"
+                        maxLength={16}
+                        onKeyDown={blockNonNumericKeyDown}
+                        {...register("nikBaru")}
+                      />
+                      {errors.nikBaru && <p className="text-xs text-destructive">{errors.nikBaru.message}</p>}
                     </div>
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium">Nama Lengkap</label>
                       <Input placeholder="Nama Lengkap Sesuai KTP" {...register("namaBaru")} />
+                      {errors.namaBaru && <p className="text-xs text-destructive">{errors.namaBaru.message}</p>}
                     </div>
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium">Tempat Lahir</label>
                       <Input placeholder="Kota/Kabupaten Lahir" {...register("tempatLahirBaru")} />
+                      {errors.tempatLahirBaru && <p className="text-xs text-destructive">{errors.tempatLahirBaru.message}</p>}
                     </div>
 
                     <div className="flex flex-col space-y-1.5">
@@ -479,6 +561,7 @@ export default function TambahKartuKeluargaPage() {
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium">Pekerjaan</label>
                       <Input placeholder="Contoh: Wiraswasta" {...register("pekerjaanBaru")} />
+                      {errors.pekerjaanBaru && <p className="text-xs text-destructive">{errors.pekerjaanBaru.message}</p>}
                     </div>
                   </div>
                 </div>

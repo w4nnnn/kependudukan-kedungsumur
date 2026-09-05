@@ -9,6 +9,16 @@ import { Calendar as CalendarIcon, Loader2, ArrowLeft, Save, Upload, Trash2, X, 
 import { format } from "date-fns"
 
 import { cn, formatDateId } from "@/lib/utils"
+import {
+  REGEX_NIK,
+  REGEX_NO_KK,
+  REGEX_RT_RW,
+  REGEX_NAMA,
+  REGEX_TEMPAT_LAHIR,
+  REGEX_ALAMAT,
+  REGEX_PEKERJAAN,
+  blockNonNumericKeyDown,
+} from "@/lib/validation"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -20,21 +30,45 @@ import { authClient } from "@/lib/auth-client"
 import { toast } from "sonner"
 
 const formSchema = z.object({
-  nik: z.string().length(16, "NIK harus tepat 16 digit"),
-  noKk: z.string().length(16, "No KK harus tepat 16 digit"),
-  namaLengkap: z.string().min(3, "Nama Lengkap minimal 3 karakter"),
-  tempatLahir: z.string().min(3, "Tempat Lahir minimal 3 karakter"),
+  nik: z
+    .string()
+    .length(16, "NIK harus tepat 16 digit")
+    .regex(REGEX_NIK, "NIK hanya boleh berisi 16 digit angka"),
+  noKk: z
+    .string()
+    .length(16, "Nomor KK harus tepat 16 digit")
+    .regex(REGEX_NO_KK, "Nomor KK hanya boleh berisi 16 digit angka"),
+  namaLengkap: z
+    .string()
+    .min(3, "Nama Lengkap minimal 3 karakter")
+    .regex(REGEX_NAMA, "Nama hanya boleh berisi huruf, spasi, titik, atau tanda petik"),
+  tempatLahir: z
+    .string()
+    .min(3, "Tempat Lahir minimal 3 karakter")
+    .regex(REGEX_TEMPAT_LAHIR, "Tempat lahir hanya boleh berisi huruf dan spasi"),
   tanggalLahir: z.date({
     required_error: "Pilih tanggal lahir",
   }),
   jenisKelamin: z.enum(["Laki-laki", "Perempuan"], { required_error: "Pilih jenis kelamin" }),
-  alamat: z.string().min(5, "Alamat minimal 5 karakter"),
-  rt: z.string().length(3, "RT harus 3 digit (contoh: 001)"),
-  rw: z.string().length(3, "RW harus 3 digit (contoh: 002)"),
+  alamat: z
+    .string()
+    .min(5, "Alamat minimal 5 karakter")
+    .regex(REGEX_ALAMAT, "Alamat mengandung simbol yang tidak valid"),
+  rt: z
+    .string()
+    .length(3, "RT harus 3 digit (contoh: 001)")
+    .regex(REGEX_RT_RW, "RT harus berupa 3 digit angka"),
+  rw: z
+    .string()
+    .length(3, "RW harus 3 digit (contoh: 002)")
+    .regex(REGEX_RT_RW, "RW harus berupa 3 digit angka"),
   agama: z.enum(["Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu"], { required_error: "Pilih agama" }),
   statusPerkawinan: z.enum(["Belum Kawin", "Kawin", "Cerai Hidup", "Cerai Mati"], { required_error: "Pilih status perkawinan" }),
   shdk: z.string().min(1, "Pilih status dalam keluarga"),
-  pekerjaan: z.string().min(2, "Pekerjaan wajib diisi"),
+  pekerjaan: z
+    .string()
+    .min(2, "Pekerjaan wajib diisi")
+    .regex(REGEX_PEKERJAAN, "Pekerjaan mengandung simbol yang tidak valid"),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -362,14 +396,24 @@ export default function EditPendudukPage() {
                 {/* NIK & KK */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Nomor Induk Kependudukan (NIK)</label>
-                  <Input placeholder="16 Digit NIK" maxLength={16} {...register("nik")} />
+                  <Input
+                    placeholder="16 Digit NIK"
+                    maxLength={16}
+                    onKeyDown={blockNonNumericKeyDown}
+                    {...register("nik")}
+                  />
                   {errors.nik && <p className="text-sm text-destructive">{errors.nik.message}</p>}
                 </div>
                 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Nomor Kartu Keluarga (KK)</label>
-                  <Input placeholder="16 Digit No KK" maxLength={16} {...register("noKk")} />
-                  {errors.noKk && <p className="text-sm text-destructive">{errors.noKk.message}</p>}
+                  <Input
+                    placeholder="16 Digit No KK"
+                    maxLength={16}
+                    onKeyDown={blockNonNumericKeyDown}
+                    {...register("noKk")}
+                  />
+                  {errors.noKk && <p className="text-xs text-destructive">{errors.noKk.message}</p>}
                 </div>
 
                 {/* Nama Lengkap */}
@@ -511,13 +555,23 @@ export default function EditPendudukPage() {
                 {/* RT & RW */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">RT</label>
-                  <Input placeholder="001" maxLength={3} {...register("rt")} />
+                  <Input
+                    placeholder="001"
+                    maxLength={3}
+                    onKeyDown={blockNonNumericKeyDown}
+                    {...register("rt")}
+                  />
                   {errors.rt && <p className="text-sm text-destructive">{errors.rt.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">RW</label>
-                  <Input placeholder="002" maxLength={3} {...register("rw")} />
+                  <Input
+                    placeholder="002"
+                    maxLength={3}
+                    onKeyDown={blockNonNumericKeyDown}
+                    {...register("rw")}
+                  />
                   {errors.rw && <p className="text-sm text-destructive">{errors.rw.message}</p>}
                 </div>
               </div>
