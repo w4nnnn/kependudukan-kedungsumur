@@ -1,118 +1,49 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import {
-  Loader2,
-  Search,
-  Plus,
-  MoreHorizontal,
-  Pencil,
-  Trash,
-  AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Upload,
-  FileSpreadsheet,
-  CheckCircle2,
-} from "lucide-react"
-
+import { Loader2 } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { toast } from "sonner"
-
-interface Penduduk {
-  id: string
-  nik: string
-  noKk: string
-  namaLengkap: string
-  tempatLahir: string
-  tanggalLahir: string
-  jenisKelamin: string
-  alamat: string
-  rt: string
-  rw: string
-  agama: string
-  statusPerkawinan: string
-  pekerjaan: string
-  foto?: string | null
-  fotoUrl?: string | null
-}
-
-function getInitials(name: string) {
-  return (
-    name
-      .split(" ")
-      .map((n) => n[0])
-      .filter(Boolean)
-      .slice(0, 2)
-      .join("")
-      .toUpperCase() || "P"
-  )
-}
+import { KependudukanTable } from "@/components/kependudukan/kependudukan-table"
+import { KependudukanFilterBar } from "@/components/kependudukan/kependudukan-filter-bar"
+import { KependudukanImportDialog } from "@/components/kependudukan/kependudukan-import-dialog"
+import { KependudukanDeleteDialog } from "@/components/kependudukan/kependudukan-delete-dialog"
+import { useKependudukan } from "@/components/kependudukan/use-kependudukan"
 
 export default function KependudukanPage() {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
-  const [dataPenduduk, setDataPenduduk] = useState<Penduduk[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedRt, setSelectedRt] = useState<string>("ALL")
-  const [selectedRw, setSelectedRw] = useState<string>("ALL")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalData, setTotalData] = useState(0)
-  const limit = 10
-  const [deleteData, setDeleteData] = useState<{ id: string, name: string } | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-
-  const [isImportOpen, setIsImportOpen] = useState(false)
-  const [importFile, setImportFile] = useState<File | null>(null)
-  const [isImporting, setIsImporting] = useState(false)
-  const [importResult, setImportResult] = useState<{ totalDiproses: number; berhasil: number; dilewati: number; errors: string[] } | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  
-  const { useSession } = authClient;
+  const { useSession } = authClient
   const { data: session, isPending: isSessionPending } = useSession()
+
+  const {
+    dataPenduduk,
+    isLoading,
+    searchQuery,
+    setSearchQuery,
+    selectedRt,
+    setSelectedRt,
+    selectedRw,
+    setSelectedRw,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totalData,
+    deleteData,
+    setDeleteData,
+    isDeleting,
+    isImportOpen,
+    setIsImportOpen,
+    importFile,
+    setImportFile,
+    isImporting,
+    importResult,
+    handleExport,
+    handleDownloadTemplate,
+    handleImportSubmit,
+    handleDelete,
+  } = useKependudukan(session)
 
   useEffect(() => {
     setMounted(true)
@@ -124,151 +55,6 @@ export default function KependudukanPage() {
     }
   }, [mounted, session, isSessionPending, router])
 
-  const fetchPenduduk = async (search = "", rt = "ALL", rw = "ALL", page = 1) => {
-    setIsLoading(true)
-    try {
-      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk`)
-      url.searchParams.append("page", page.toString())
-      url.searchParams.append("limit", limit.toString())
-
-      if (search) {
-        if (/^\d{16}$/.test(search)) {
-          url.searchParams.append("nik", search)
-        } else {
-          url.searchParams.append("search", search)
-        }
-      }
-
-      if (rt !== "ALL") {
-        url.searchParams.append("rt", rt)
-      }
-
-      if (rw !== "ALL") {
-        url.searchParams.append("rw", rw)
-      }
-      
-      const res = await fetch(url.toString(), {
-        credentials: "include", 
-      })
-      
-      if (res.ok) {
-        const text = await res.text()
-        if (text) {
-          const json = JSON.parse(text)
-          if (json.success) {
-            setDataPenduduk(json.data)
-            if (json.meta) {
-              setTotalPages(json.meta.totalPages)
-              setTotalData(json.meta.total)
-            }
-          }
-        }
-      } else if (res.status === 401 || res.status === 403) {
-        router.push("/login")
-      }
-    } catch (error) {
-      console.error("Gagal mengambil data penduduk", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (session) {
-      fetchPenduduk(searchQuery, selectedRt, selectedRw, currentPage)
-    }
-  }, [session, currentPage, selectedRt, selectedRw])
-
-  useEffect(() => {
-    if (!session) return
-    const delayDebounceFn = setTimeout(() => {
-      setCurrentPage(1)
-      fetchPenduduk(searchQuery, selectedRt, selectedRw, 1)
-    }, 500)
-    return () => clearTimeout(delayDebounceFn)
-  }, [searchQuery, session])
-
-  const handleExport = () => {
-    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk/export`)
-    if (selectedRt !== "ALL") url.searchParams.append("rt", selectedRt)
-    if (selectedRw !== "ALL") url.searchParams.append("rw", selectedRw)
-    window.open(url.toString(), "_blank")
-  }
-
-  const handleDownloadTemplate = () => {
-    window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk/template`, "_blank")
-  }
-
-  const handleImportSubmit = async () => {
-    if (!importFile) {
-      toast.error("Pilih file Excel terlebih dahulu")
-      return
-    }
-
-    setIsImporting(true)
-    setImportResult(null)
-
-    try {
-      const formData = new FormData()
-      formData.append("file", importFile)
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk/import`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      })
-
-      const json = await res.json()
-
-      if (res.ok && json.success) {
-        toast.success("Impor Berhasil", { description: json.message })
-        setImportResult(json.data)
-        fetchPenduduk(searchQuery, selectedRt, selectedRw, 1)
-      } else {
-        toast.error("Impor Gagal", { description: json.message || "File tidak dapat diproses" })
-        if (json.errors) {
-          setImportResult({ totalDiproses: 0, berhasil: 0, dilewati: 0, errors: json.errors })
-        }
-      }
-    } catch (error) {
-      toast.error("Kesalahan Jaringan", { description: "Gagal terhubung ke server" })
-    } finally {
-      setIsImporting(false)
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!deleteData) return
-    
-    setIsDeleting(true)
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk/${deleteData.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      })
-
-      const result = await res.json()
-
-      if (res.ok && result.success) {
-        toast.success("Berhasil", {
-          description: `Data ${deleteData.name} telah dihapus.`,
-        })
-        fetchPenduduk(searchQuery, selectedRt, selectedRw, currentPage)
-      } else {
-        toast.error("Gagal menghapus data", {
-          description: result.message || "Terjadi kesalahan sistem.",
-        })
-      }
-    } catch (error) {
-      toast.error("Kesalahan jaringan", {
-        description: "Gagal terhubung ke server.",
-      })
-    } finally {
-      setIsDeleting(false)
-      setDeleteData(null)
-    }
-  }
-
   if (!mounted || isSessionPending) {
     return (
       <div className="flex h-full items-center justify-center p-24">
@@ -277,16 +63,11 @@ export default function KependudukanPage() {
     )
   }
 
-  // Jika tidak ada sesi (dan sedang di-redirect), jangan render konten dashboard
-  if (!session) {
-    return null
-  }
+  if (!session) return null
 
   return (
     <div className="flex w-full flex-col p-4 md:p-8">
       <div className="mx-auto w-full max-w-6xl space-y-6">
-        
-        {/* Header Dashboard */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-6 rounded-2xl mt-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Data Kependudukan</h1>
@@ -296,340 +77,60 @@ export default function KependudukanPage() {
           </div>
         </div>
 
-        {/* Card Tabel */}
         <Card className="shadow-sm overflow-hidden">
           <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between pb-4 border-b">
             <CardTitle className="flex items-center gap-2">
               <span>Daftar Penduduk</span>
             </CardTitle>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center flex-wrap">
-              {/* Filter RT */}
-              <div className="w-full sm:w-28">
-                <Select value={selectedRt} onValueChange={(val) => { setSelectedRt(val || "ALL"); setCurrentPage(1); }}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="RT" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Semua RT</SelectItem>
-                    <SelectItem value="001">RT 001</SelectItem>
-                    <SelectItem value="002">RT 002</SelectItem>
-                    <SelectItem value="003">RT 003</SelectItem>
-                    <SelectItem value="004">RT 004</SelectItem>
-                    <SelectItem value="005">RT 005</SelectItem>
-                    <SelectItem value="006">RT 006</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Filter RW */}
-              <div className="w-full sm:w-28">
-                <Select value={selectedRw} onValueChange={(val) => { setSelectedRw(val || "ALL"); setCurrentPage(1); }}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="RW" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Semua RW</SelectItem>
-                    <SelectItem value="001">RW 001</SelectItem>
-                    <SelectItem value="002">RW 002</SelectItem>
-                    <SelectItem value="003">RW 003</SelectItem>
-                    <SelectItem value="004">RW 004</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="relative group w-full sm:w-auto">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors" />
-                <Input
-                  type="search"
-                  placeholder="Cari nama atau NIK (16 digit)..."
-                  className="w-full pl-9 sm:w-64 transition-all rounded-lg"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button
-                  variant="outline"
-                  onClick={handleExport}
-                  className="gap-2 font-medium shadow-xs"
-                  title="Ekspor Data Penduduk ke Excel"
-                >
-                  <Download className="h-4 w-4" />
-                  <span>Ekspor</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsImportOpen(true)
-                    setImportFile(null)
-                    setImportResult(null)
-                  }}
-                  className="gap-2 font-medium shadow-xs"
-                  title="Impor Data Penduduk dari Excel"
-                >
-                  <Upload className="h-4 w-4" />
-                  <span>Impor</span>
-                </Button>
-                <Button 
-                  onClick={() => router.push("/kependudukan/tambah")}
-                  className="gap-2 font-medium shadow-sm"
-                >
-                  <Plus className="h-4 w-4" />
-                  Tambah Penduduk
-                </Button>
-              </div>
-            </div>
+            <KependudukanFilterBar
+              selectedRt={selectedRt}
+              selectedRw={selectedRw}
+              searchQuery={searchQuery}
+              onRtChange={(rt) => { setSelectedRt(rt); setCurrentPage(1); }}
+              onRwChange={(rw) => { setSelectedRw(rw); setCurrentPage(1); }}
+              onSearchChange={setSearchQuery}
+              onExport={handleExport}
+              onOpenImport={() => {
+                setIsImportOpen(true)
+                setImportFile(null)
+              }}
+              onAddPenduduk={() => router.push("/kependudukan/tambah")}
+            />
           </CardHeader>
           
           <CardContent className="p-0">
-            {isLoading ? (
-              <div className="flex justify-center p-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : dataPenduduk.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
-                <div className="h-16 w-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-                  <Search className="h-6 w-6 opacity-50" />
-                </div>
-                <p className="font-medium text-foreground">Tidak ada data ditemukan</p>
-                <p className="text-sm mt-1">Coba gunakan kata kunci pencarian yang lain.</p>
-              </div>
-            ) : (
-              <div className="flex flex-col">
-                <div className="overflow-x-auto mx-2">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="font-medium h-12">NIK</TableHead>
-                        <TableHead className="font-medium h-12">Nama Lengkap</TableHead>
-                        <TableHead className="font-medium h-12">Jenis Kelamin</TableHead>
-                        <TableHead className="font-medium h-12">Alamat</TableHead>
-                        <TableHead className="font-medium h-12">Pekerjaan</TableHead>
-                        <TableHead className="w-[80px] h-12"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dataPenduduk.map((penduduk) => (
-                        <TableRow key={penduduk.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/kependudukan/${penduduk.id}`)}>
-                          <TableCell className="font-mono text-sm">{penduduk.nik}</TableCell>
-                          <TableCell className="font-medium">
-                            <div className="flex items-center gap-3">
-                              <Avatar size="sm">
-                                {penduduk.fotoUrl ? (
-                                  <AvatarImage src={penduduk.fotoUrl} alt={penduduk.namaLengkap} />
-                                ) : null}
-                                <AvatarFallback>{getInitials(penduduk.namaLengkap)}</AvatarFallback>
-                              </Avatar>
-                              <span>{penduduk.namaLengkap}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground border">
-                              {penduduk.jenisKelamin}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {penduduk.alamat}, RT {penduduk.rt}/RW {penduduk.rw}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{penduduk.pekerjaan}</TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                                <span className="sr-only">Buka menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuGroup>
-                                  <DropdownMenuLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Aksi</DropdownMenuLabel>
-                                  <DropdownMenuItem className="cursor-pointer" onClick={() => router.push(`/kependudukan/edit/${penduduk.id}`)}>
-                                    <Pencil className="mr-2 h-4 w-4" /> Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem variant="destructive" className="cursor-pointer" onClick={() => setDeleteData({ id: penduduk.id, name: penduduk.namaLengkap })}>
-                                    <Trash className="mr-2 h-4 w-4" /> Hapus
-                                  </DropdownMenuItem>
-                                </DropdownMenuGroup>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-                
-                {/* Pagination Controls */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between px-4 py-4 border-t">
-                    <div className="text-sm text-muted-foreground">
-                      Menampilkan <span className="font-medium">{dataPenduduk.length}</span> dari <span className="font-medium">{totalData}</span> data
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage === 1 || isLoading}
-                        className="h-8 gap-1 px-2.5"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                        <span>Sebelumnya</span>
-                      </Button>
-                      <div className="flex items-center gap-1 text-sm font-medium">
-                        <span className="w-8 text-center">{currentPage}</span>
-                        <span className="text-muted-foreground">/</span>
-                        <span className="w-8 text-center">{totalPages}</span>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages || isLoading}
-                        className="h-8 gap-1 px-2.5"
-                      >
-                        <span>Selanjutnya</span>
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            <KependudukanTable
+              data={dataPenduduk}
+              isLoading={isLoading}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalData={totalData}
+              onPageChange={setCurrentPage}
+              onRowClick={(id) => router.push(`/kependudukan/${id}`)}
+              onEdit={(id) => router.push(`/kependudukan/edit/${id}`)}
+              onDelete={setDeleteData}
+            />
           </CardContent>
         </Card>
       </div>
 
-      {/* Modal Dialog Import Excel */}
-      <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileSpreadsheet className="h-5 w-5 text-primary" />
-              Impor Data Penduduk (Excel)
-            </DialogTitle>
-            <DialogDescription>
-              Unggah file spreadsheet <strong>.xlsx</strong> sesuai template resmi sistem kependudukan.
-            </DialogDescription>
-          </DialogHeader>
+      <KependudukanImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        importFile={importFile}
+        setImportFile={setImportFile}
+        isImporting={isImporting}
+        importResult={importResult}
+        onDownloadTemplate={handleDownloadTemplate}
+        onSubmit={handleImportSubmit}
+      />
 
-          <div className="space-y-4 py-2">
-            <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/20">
-              <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-foreground">Template Format Excel</p>
-                <p className="text-[11px] text-muted-foreground">Unduh format kolom yang sudah divalidasi sistem</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownloadTemplate}
-                className="gap-1.5 text-xs"
-              >
-                <Download className="size-3.5" />
-                Unduh Template
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-foreground">Pilih File Excel (.xlsx)</label>
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed transition-colors cursor-pointer ${
-                  importFile ? "border-primary/60 bg-primary/5" : "border-border hover:border-primary/40 bg-card"
-                }`}
-              >
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                  accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  className="hidden"
-                />
-                <FileSpreadsheet className={`size-8 mb-2 ${importFile ? "text-primary" : "text-muted-foreground"}`} />
-                <p className="text-xs font-medium text-center text-foreground">
-                  {importFile ? importFile.name : "Klik untuk memilih file spreadsheet"}
-                </p>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Maksimal ukuran file 10MB
-                </p>
-              </div>
-            </div>
-
-            {importResult && (
-              <div className="p-3.5 rounded-xl border bg-muted/20 space-y-2 text-xs">
-                <div className="flex items-center gap-2 font-semibold text-foreground">
-                  <CheckCircle2 className="size-4 text-emerald-500" />
-                  Laporan Hasil Impor
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center pt-1">
-                  <div className="p-2 rounded-lg bg-card border">
-                    <span className="text-[10px] text-muted-foreground">Diproses</span>
-                    <p className="font-bold text-sm text-foreground">{importResult.totalDiproses}</p>
-                  </div>
-                  <div className="p-2 rounded-lg bg-card border">
-                    <span className="text-[10px] text-emerald-500">Berhasil</span>
-                    <p className="font-bold text-sm text-emerald-500">{importResult.berhasil}</p>
-                  </div>
-                  <div className="p-2 rounded-lg bg-card border">
-                    <span className="text-[10px] text-amber-500">Dilewati (Duplikat)</span>
-                    <p className="font-bold text-sm text-amber-500">{importResult.dilewati}</p>
-                  </div>
-                </div>
-                {importResult.errors && importResult.errors.length > 0 && (
-                  <div className="space-y-1 pt-1 text-[11px] text-destructive">
-                    <p className="font-semibold">Catatan Kesalahan Format:</p>
-                    <ul className="list-disc list-inside space-y-0.5 max-h-20 overflow-y-auto">
-                      {importResult.errors.map((err, i) => (
-                        <li key={i}>{err}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsImportOpen(false)} disabled={isImporting}>
-              Tutup
-            </Button>
-            <Button onClick={handleImportSubmit} disabled={isImporting || !importFile} className="gap-2">
-              {isImporting ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-              {isImporting ? "Memproses..." : "Mulai Impor"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={!!deleteData} onOpenChange={(open) => !open && setDeleteData(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" /> Konfirmasi Penghapusan
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus data kependudukan atas nama <strong>{deleteData?.name}</strong>? Tindakan ini tidak dapat dibatalkan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={(e) => {
-                e.preventDefault()
-                handleDelete()
-              }} 
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Menghapus...
-                </>
-              ) : (
-                "Hapus Permanen"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <KependudukanDeleteDialog
+        data={deleteData}
+        isDeleting={isDeleting}
+        onClose={() => setDeleteData(null)}
+        onConfirm={handleDelete}
+      />
     </div>
   )
 }
