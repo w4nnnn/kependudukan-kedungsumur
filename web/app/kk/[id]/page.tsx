@@ -112,14 +112,6 @@ export default function DetailKartuKeluargaPage() {
   const [data, setData] = useState<KartuKeluargaDetail | null>(null)
   const [isFetching, setIsFetching] = useState(true)
 
-  const [isAddAnggotaOpen, setIsAddAnggotaOpen] = useState(false)
-  const [candidateList, setCandidateList] = useState<AnggotaPenduduk[]>([])
-  const [candidateSearch, setCandidateSearch] = useState("")
-  const [selectedPendudukId, setSelectedPendudukId] = useState("")
-  const [selectedShdk, setSelectedShdk] = useState("ANAK")
-  const [selectedUrutan, setSelectedUrutan] = useState("1")
-  const [isAddingAnggota, setIsAddingAnggota] = useState(false)
-
   const [removeCandidate, setRemoveCandidate] = useState<AnggotaPenduduk | null>(null)
   const [isRemoving, setIsRemoving] = useState(false)
 
@@ -162,71 +154,6 @@ export default function DetailKartuKeluargaPage() {
       router.push("/login")
     }
   }, [session, isSessionPending, router])
-
-  const searchCandidatePenduduk = async (query: string) => {
-    try {
-      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk`)
-      url.searchParams.append("limit", "10")
-      if (query) {
-        if (/^\d{16}$/.test(query)) {
-          url.searchParams.append("nik", query)
-        } else {
-          url.searchParams.append("search", query)
-        }
-      }
-
-      const res = await fetch(url.toString(), { credentials: "include" })
-      if (res.ok) {
-        const json = await res.json()
-        if (json.success) {
-          setCandidateList(json.data)
-        }
-      }
-    } catch (err) {
-      console.error("Gagal mencari penduduk", err)
-    }
-  }
-
-  useEffect(() => {
-    if (isAddAnggotaOpen) {
-      searchCandidatePenduduk(candidateSearch)
-    }
-  }, [isAddAnggotaOpen, candidateSearch])
-
-  const handleAddAnggota = async () => {
-    if (!selectedPendudukId) {
-      toast.error("Pilih data penduduk terlebih dahulu.")
-      return
-    }
-
-    setIsAddingAnggota(true)
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/kk/${routeId}/anggota`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          pendudukId: selectedPendudukId,
-          shdk: selectedShdk,
-          urutanKk: selectedUrutan,
-        }),
-      })
-
-      const json = await res.json()
-      if (res.ok && json.success) {
-        toast.success("Berhasil", { description: json.message })
-        setIsAddAnggotaOpen(false)
-        setSelectedPendudukId("")
-        fetchKKDetail()
-      } else {
-        toast.error("Gagal menambahkan anggota", { description: json.message })
-      }
-    } catch (err) {
-      toast.error("Kesalahan jaringan")
-    } finally {
-      setIsAddingAnggota(false)
-    }
-  }
 
   const handleRemoveAnggota = async () => {
     if (!removeCandidate || !routeId) return
@@ -300,7 +227,7 @@ export default function DetailKartuKeluargaPage() {
               <Pencil className="h-4 w-4" />
               Edit KK
             </Button>
-            <Button onClick={() => { setIsAddAnggotaOpen(true); setSelectedUrutan(String(data.anggota.length + 1)); }} className="gap-2">
+            <Button onClick={() => router.push(`/kk/${data.id}/anggota/tambah`)} className="gap-2">
               <Plus className="h-4 w-4" />
               Tambah Anggota
             </Button>
@@ -450,82 +377,6 @@ export default function DetailKartuKeluargaPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Dialog Tambah Anggota */}
-      <Dialog open={isAddAnggotaOpen} onOpenChange={setIsAddAnggotaOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Tambah Anggota ke KK No. {data.noKk}</DialogTitle>
-            <DialogDescription>
-              Cari data penduduk yang sudah ada atau masukkan NIK untuk ditautkan ke KK ini.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-3">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Cari Penduduk</label>
-              <Input
-                placeholder="Ketik nama atau 16 digit NIK..."
-                value={candidateSearch}
-                onChange={(e) => setCandidateSearch(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Pilih Penduduk</label>
-              <Select value={selectedPendudukId} onValueChange={(val) => setSelectedPendudukId(val || "")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="-- Pilih Data Penduduk --" />
-                </SelectTrigger>
-                <SelectContent className="max-h-56">
-                  {candidateList.map((cand) => (
-                    <SelectItem key={cand.id} value={cand.id}>
-                      {cand.namaLengkap} ({cand.nik}) - {cand.alamat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Status Hubungan (SHDK)</label>
-                <Select value={selectedShdk} onValueChange={(val) => setSelectedShdk(val || "ANAK")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih SHDK" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SHDK_OPTIONS.map((opt) => (
-                      <SelectItem key={opt} value={opt}>
-                        {opt}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Nomor Urut di KK</label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={selectedUrutan}
-                  onChange={(e) => setSelectedUrutan(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddAnggotaOpen(false)} disabled={isAddingAnggota}>
-              Batal
-            </Button>
-            <Button onClick={handleAddAnggota} disabled={isAddingAnggota || !selectedPendudukId}>
-              {isAddingAnggota ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Tautkan ke KK
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Alert Keluarkan Anggota */}
       <AlertDialog open={!!removeCandidate} onOpenChange={(open) => !open && setRemoveCandidate(null)}>
