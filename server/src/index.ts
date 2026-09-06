@@ -48,7 +48,7 @@ const start = async () => {
   try {
     await initMinioBucket();
 
-    const port = parseInt(process.env.PORT || "3000", 10);
+    const port = parseInt(process.env.PORT || "4000", 10);
     
     await app.listen({ port, host: "0.0.0.0" });
     console.log(`🚀 Server API berjalan di http://localhost:${port}`);
