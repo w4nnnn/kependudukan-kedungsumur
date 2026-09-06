@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format, parseISO } from "date-fns"
 import { toast } from "sonner"
+import { API_BASE_URL } from "@/lib/config"
 import { editKkFormSchema, type EditKkFormValues } from "./kk-form-schema"
 
 export function useEditKk(routeId: string | undefined) {
@@ -33,7 +34,7 @@ export function useEditKk(routeId: string | undefined) {
 
     const fetchKK = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/kk/${routeId}`, {
+        const res = await fetch(`${API_BASE_URL}/api/kk/${routeId}`, {
           credentials: "include",
         })
 
@@ -79,7 +80,7 @@ export function useEditKk(routeId: string | undefined) {
           : null,
       }
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/kk/${routeId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/kk/${routeId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { API_BASE_URL } from "@/lib/config"
 import type { StatsData } from "./types"
 
 export function useDashboardStats(session: unknown) {
@@ -15,7 +16,7 @@ export function useDashboardStats(session: unknown) {
   const fetchStats = async (rt = "ALL", rw = "ALL") => {
     setIsLoading(true)
     try {
-      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/stats`)
+      const url = new URL(`${API_BASE_URL}/api/stats`)
       if (rt !== "ALL") url.searchParams.append("rt", rt)
       if (rw !== "ALL") url.searchParams.append("rw", rw)
 
@@ -43,7 +44,7 @@ export function useDashboardStats(session: unknown) {
   }, [session, selectedRt, selectedRw])
 
   const handleExportPDF = () => {
-    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/stats/pdf`)
+    const url = new URL(`${API_BASE_URL}/api/stats/pdf`)
     if (selectedRt !== "ALL") url.searchParams.append("rt", selectedRt)
     if (selectedRw !== "ALL") url.searchParams.append("rw", selectedRw)
     window.open(url.toString(), "_blank")

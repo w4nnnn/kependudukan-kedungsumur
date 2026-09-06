@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import { Loader2, ArrowLeft, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { authClient } from "@/lib/auth-client"
+import { API_BASE_URL } from "@/lib/config"
 import { toast } from "sonner"
 import type { Penduduk } from "@/components/kependudukan/types"
 import {
@@ -30,7 +31,7 @@ export default function DetailPendudukPage() {
 
     const fetchPenduduk = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk/${routeId}`, {
+        const res = await fetch(`${API_BASE_URL}/api/penduduk/${routeId}`, {
           credentials: "include",
         })
 

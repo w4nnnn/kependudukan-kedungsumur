@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import { toast } from "sonner"
+import { API_BASE_URL } from "@/lib/config"
 import type { CandidatePenduduk } from "./types"
 import { tambahKkFormSchema, type TambahKkFormValues } from "./kk-form-schema"
 
@@ -44,7 +45,7 @@ export function useTambahKk() {
     if (modeKepala === "select") {
       const searchPenduduk = async () => {
         try {
-          const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk`)
+          const url = new URL(`${API_BASE_URL}/api/penduduk`)
           url.searchParams.append("limit", "10")
           if (candidateSearch) {
             if (/^\d{16}$/.test(candidateSearch)) {
@@ -126,7 +127,7 @@ export function useTambahKk() {
         }
       }
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/kk`, {
+      const res = await fetch(`${API_BASE_URL}/api/kk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

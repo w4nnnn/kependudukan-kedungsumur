@@ -1,8 +1,9 @@
 import { createAuthClient } from "better-auth/react"
 import { usernameClient, adminClient } from "better-auth/client/plugins"
+import { API_BASE_URL } from "@/lib/config"
 
 export const authClient = createAuthClient({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000",
+    baseURL: API_BASE_URL,
     plugins: [
         usernameClient(),
         adminClient()

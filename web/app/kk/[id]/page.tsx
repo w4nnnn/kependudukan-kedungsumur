@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { authClient } from "@/lib/auth-client"
+import { API_BASE_URL } from "@/lib/config"
 import { toast } from "sonner"
 import type { KartuKeluargaDetail, AnggotaPenduduk } from "@/components/kk/types"
 import { KkDetailHeader } from "@/components/kk/kk-detail-header"
@@ -30,7 +31,7 @@ export default function DetailKartuKeluargaPage() {
   const fetchKKDetail = async () => {
     if (!routeId) return
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/kk/${routeId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/kk/${routeId}`, {
         credentials: "include",
       })
 
@@ -70,7 +71,7 @@ export default function DetailKartuKeluargaPage() {
     setIsRemoving(true)
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/kk/${routeId}/anggota/${removeCandidate.id}`,
+        `${API_BASE_URL}/api/kk/${routeId}/anggota/${removeCandidate.id}`,
         {
           method: "DELETE",
           credentials: "include",

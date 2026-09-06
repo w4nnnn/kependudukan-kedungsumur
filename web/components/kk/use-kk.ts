@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { API_BASE_URL } from "@/lib/config"
 import type { KartuKeluarga } from "./types"
 
 export function useKK(session: unknown) {
@@ -22,7 +23,7 @@ export function useKK(session: unknown) {
   const fetchKK = async (search = "", rt = "ALL", rw = "ALL", page = 1) => {
     setIsLoading(true)
     try {
-      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/kk`)
+      const url = new URL(`${API_BASE_URL}/api/kk`)
       url.searchParams.append("page", page.toString())
       url.searchParams.append("limit", limit.toString())
 
@@ -76,7 +77,7 @@ export function useKK(session: unknown) {
   }, [searchQuery, session])
 
   const handleExport = () => {
-    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/kk/export`)
+    const url = new URL(`${API_BASE_URL}/api/kk/export`)
     if (selectedRt !== "ALL") url.searchParams.append("rt", selectedRt)
     if (selectedRw !== "ALL") url.searchParams.append("rw", selectedRw)
     window.open(url.toString(), "_blank")
@@ -86,7 +87,7 @@ export function useKK(session: unknown) {
     if (!deleteData) return
     setIsDeleting(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/kk/${deleteData.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/kk/${deleteData.id}`, {
         method: "DELETE",
         credentials: "include",
       })

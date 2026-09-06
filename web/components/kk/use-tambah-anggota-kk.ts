@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import { toast } from "sonner"
+import { API_BASE_URL } from "@/lib/config"
 import type { CandidatePenduduk } from "./types"
 import {
   tambahAnggotaKkFormSchema,
@@ -94,7 +95,7 @@ export function useTambahAnggotaKk(
 
     const searchPenduduk = async () => {
       try {
-        const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk`)
+        const url = new URL(`${API_BASE_URL}/api/penduduk`)
         url.searchParams.append("limit", "10")
         if (candidateSearch) {
           if (/^\d{16}$/.test(candidateSearch)) {
@@ -181,7 +182,7 @@ export function useTambahAnggotaKk(
         }
       }
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/kk/${kkId}/anggota`, {
+      const res = await fetch(`${API_BASE_URL}/api/kk/${kkId}/anggota`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -196,7 +197,7 @@ export function useTambahAnggotaKk(
           try {
             const formData = new FormData()
             formData.append("file", selectedFile)
-            await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk/${createdPendudukId}/foto`, {
+            await fetch(`${API_BASE_URL}/api/penduduk/${createdPendudukId}/foto`, {
               method: "POST",
               credentials: "include",
               body: formData,

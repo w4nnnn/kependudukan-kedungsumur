@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import { toast } from "sonner"
+import { API_BASE_URL } from "@/lib/config"
 import type { CandidateKK } from "./types"
 import {
   tambahPendudukFormSchema,
@@ -56,7 +57,7 @@ export function useTambahPenduduk() {
     const fetchKkOptions = async () => {
       setIsLoadingKk(true)
       try {
-        const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/kk`)
+        const url = new URL(`${API_BASE_URL}/api/kk`)
         url.searchParams.append("limit", "10")
         if (kkSearch) {
           if (/^\d{16}$/.test(kkSearch)) {
@@ -98,8 +99,7 @@ export function useTambahPenduduk() {
   const onSubmit = async (data: TambahPendudukFormValues) => {
     setIsLoading(true)
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-      const url = `${baseUrl}/api/penduduk`
+      const url = `${API_BASE_URL}/api/penduduk`
 
       const {
         kkAlamat,
@@ -163,7 +163,7 @@ export function useTambahPenduduk() {
           try {
             const formData = new FormData()
             formData.append("file", selectedFile)
-            await fetch(`${baseUrl}/api/penduduk/${newId}/foto`, {
+            await fetch(`${API_BASE_URL}/api/penduduk/${newId}/foto`, {
               method: "POST",
               credentials: "include",
               body: formData,

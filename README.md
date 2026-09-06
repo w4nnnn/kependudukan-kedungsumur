@@ -111,10 +111,14 @@ TEST_ADMIN_PASSWORD=sandi_rahasia_123
 ```
 
 #### Frontend (`web/.env`):
-Pastikan `web/.env` mengarah ke backend API:
+Salin `web/.env.example` ke `web/.env` dan pastikan `NEXT_PUBLIC_API_URL` mengarah ke URL server backend:
 ```env
+# Base URL API Backend (Fastify Server)
 NEXT_PUBLIC_API_URL=http://localhost:4000
 ```
+> **Catatan Konfigurasi:**
+> - Di Frontend Next.js, seluruh panggilan API dan Better Auth Client dikonfigurasi terpusat melalui `web/lib/config.ts` (`API_BASE_URL`) yang membaca variabel `NEXT_PUBLIC_API_URL`.
+> - Jika backend dideploy pada domain, IP, atau port berbeda (misal production: `https://api.desa-kedungsumur.id`), ubah nilai `NEXT_PUBLIC_API_URL` di `web/.env` dan sesuaikan pula `FRONTEND_URL` di `server/.env` agar CORS diizinkan.
 
 ---
 

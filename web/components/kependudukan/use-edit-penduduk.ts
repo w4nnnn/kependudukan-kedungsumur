@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import { toast } from "sonner"
+import { API_BASE_URL } from "@/lib/config"
 import {
   editPendudukFormSchema,
   type EditPendudukFormValues,
@@ -45,7 +46,7 @@ export function useEditPenduduk(id: string | undefined) {
 
     const fetchPenduduk = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk/${id}`, {
+        const res = await fetch(`${API_BASE_URL}/api/penduduk/${id}`, {
           credentials: "include",
         })
 
@@ -87,8 +88,7 @@ export function useEditPenduduk(id: string | undefined) {
     if (!id || !currentFotoUrl) return
     setIsDeletingPhoto(true)
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-      const res = await fetch(`${baseUrl}/api/penduduk/${id}/foto`, {
+      const res = await fetch(`${API_BASE_URL}/api/penduduk/${id}/foto`, {
         method: "DELETE",
         credentials: "include",
       })
@@ -113,8 +113,7 @@ export function useEditPenduduk(id: string | undefined) {
   const onSubmit = async (data: EditPendudukFormValues) => {
     setIsLoading(true)
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-      const url = `${baseUrl}/api/penduduk/${id}`
+      const url = `${API_BASE_URL}/api/penduduk/${id}`
       const formattedData = {
         ...data,
         tanggalLahir: format(data.tanggalLahir, "yyyy-MM-dd"),
@@ -134,7 +133,7 @@ export function useEditPenduduk(id: string | undefined) {
           try {
             const formData = new FormData()
             formData.append("file", selectedFile)
-            await fetch(`${baseUrl}/api/penduduk/${id}/foto`, {
+            await fetch(`${API_BASE_URL}/api/penduduk/${id}/foto`, {
               method: "POST",
               credentials: "include",
               body: formData,

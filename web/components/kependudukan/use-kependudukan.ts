@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { API_BASE_URL } from "@/lib/config"
 import type { Penduduk, ImportResult } from "./types"
 
 export function useKependudukan(session: unknown) {
@@ -28,7 +29,7 @@ export function useKependudukan(session: unknown) {
   const fetchPenduduk = async (search = "", rt = "ALL", rw = "ALL", page = 1) => {
     setIsLoading(true)
     try {
-      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk`)
+      const url = new URL(`${API_BASE_URL}/api/penduduk`)
       url.searchParams.append("page", page.toString())
       url.searchParams.append("limit", limit.toString())
 
@@ -81,14 +82,14 @@ export function useKependudukan(session: unknown) {
   }, [searchQuery, session])
 
   const handleExport = () => {
-    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk/export`)
+    const url = new URL(`${API_BASE_URL}/api/penduduk/export`)
     if (selectedRt !== "ALL") url.searchParams.append("rt", selectedRt)
     if (selectedRw !== "ALL") url.searchParams.append("rw", selectedRw)
     window.open(url.toString(), "_blank")
   }
 
   const handleDownloadTemplate = () => {
-    window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk/template`, "_blank")
+    window.open(`${API_BASE_URL}/api/penduduk/template`, "_blank")
   }
 
   const handleImportSubmit = async () => {
@@ -101,7 +102,7 @@ export function useKependudukan(session: unknown) {
     try {
       const formData = new FormData()
       formData.append("file", importFile)
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk/import`, {
+      const res = await fetch(`${API_BASE_URL}/api/penduduk/import`, {
         method: "POST",
         credentials: "include",
         body: formData,
@@ -128,7 +129,7 @@ export function useKependudukan(session: unknown) {
     if (!deleteData) return
     setIsDeleting(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/penduduk/${deleteData.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/penduduk/${deleteData.id}`, {
         method: "DELETE",
         credentials: "include",
       })
