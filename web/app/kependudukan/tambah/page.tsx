@@ -32,6 +32,7 @@ export default function TambahPendudukPage() {
     isLoadingKk,
     handleSelectKk,
     onSubmit,
+    onInvalid,
   } = useTambahPenduduk()
 
   const { handleSubmit } = form
@@ -63,7 +64,7 @@ export default function TambahPendudukPage() {
             <CardDescription>Semua kolom wajib diisi dengan benar.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
               <KependudukanPhotoUpload
                 previewUrl={previewUrl}
                 onFileSelect={(file, url) => {

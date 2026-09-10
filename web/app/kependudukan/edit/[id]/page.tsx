@@ -29,6 +29,7 @@ export default function EditPendudukPage() {
     isDeletingPhoto,
     handleDeleteCurrentPhoto,
     onSubmit,
+    onInvalid,
   } = useEditPenduduk(id)
 
   const { handleSubmit } = form
@@ -68,7 +69,7 @@ export default function EditPendudukPage() {
             <CardDescription>Semua kolom bertanda bintang wajib diisi dengan benar.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
               <KependudukanPhotoUpload
                 previewUrl={previewUrl}
                 currentFotoUrl={currentFotoUrl}
