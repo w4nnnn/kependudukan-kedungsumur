@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import ExcelJS from "exceljs";
 import { db } from "../db/index.js";
 import { pendudukTable, kartuKeluargaTable, hashKependudukan } from "../db/schema/schema.js";
-import { eq, and, asc, sql } from "drizzle-orm";
+import { eq, and, asc, sql, inArray, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 
 export default async function exportImportRoutes(fastify: FastifyInstance) {
@@ -106,6 +106,14 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
       const conditions = [];
       if (rt && rt !== "ALL") conditions.push(eq(pendudukTable.rt, rt));
       if (rw && rw !== "ALL") conditions.push(eq(pendudukTable.rw, rw));
+      if (search) {
+        const trimmed = search.trim();
+        if (/^\d{16}$/.test(trimmed)) {
+          conditions.push(eq(pendudukTable.nikHash, hashKependudukan(trimmed)));
+        } else {
+          conditions.push(ilike(pendudukTable.namaLengkap, `%${trimmed}%`));
+        }
+      }
 
       const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -219,7 +227,7 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
             count: sql<number>`cast(count(${pendudukTable.id}) as integer)`,
           })
           .from(pendudukTable)
-          .where(sql`${pendudukTable.kartuKeluargaId} IN ${kkIds}`)
+          .where(inArray(pendudukTable.kartuKeluargaId, kkIds))
           .groupBy(pendudukTable.kartuKeluargaId);
 
         counts.forEach((c) => {
@@ -302,6 +310,7 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
 
       const parsedRows: any[] = [];
       const errors: string[] = [];
+      const seenNiksInFile = new Set<string>();
 
       const headerRow = worksheet.getRow(1);
       const colMap: Record<string, number> = {};
@@ -376,6 +385,12 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
           return;
         }
 
+        if (seenNiksInFile.has(nik)) {
+          errors.push(`Baris ${rowNumber}: NIK '${nik}' duplikat di dalam file Excel.`);
+          return;
+        }
+        seenNiksInFile.add(nik);
+
         parsedRows.push({
           nik,
           noKk,
@@ -415,96 +430,97 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
         kkGroups.set(row.noKk, list);
       }
 
-      for (const [noKk, members] of kkGroups.entries()) {
-        const noKkHash = hashKependudukan(noKk);
+      await db.transaction(async (tx) => {
+        for (const [noKk, members] of kkGroups.entries()) {
+          const noKkHash = hashKependudukan(noKk);
 
-        // 1. Cek atau buat KK
-        let kkId: string;
-        const existingKk = await db
-          .select()
-          .from(kartuKeluargaTable)
-          .where(eq(kartuKeluargaTable.noKkHash, noKkHash));
-
-        if (existingKk[0]) {
-          kkId = existingKk[0].id;
-        } else {
-          const sample = members[0]!;
-          const [newKk] = await db
-            .insert(kartuKeluargaTable)
-            .values({
-              noKk,
-              noKkHash,
-              alamat: sample.alamat,
-              rt: sample.rt,
-              rw: sample.rw,
-              dusun: "Dusun Krajan",
-              kodePos: "65171",
-            })
-            .returning();
-          kkId = newKk!.id;
-        }
-
-        // 2. Insert tiap anggota
-        let kepalaId: string | null = null;
-
-        for (let i = 0; i < members.length; i++) {
-          const m = members[i]!;
-          const nikHash = hashKependudukan(m.nik);
-
-          // Cek NIK duplikat
-          const existingPenduduk = await db
+          let kkId: string;
+          const existingKk = await tx
             .select()
-            .from(pendudukTable)
-            .where(eq(pendudukTable.nikHash, nikHash));
+            .from(kartuKeluargaTable)
+            .where(eq(kartuKeluargaTable.noKkHash, noKkHash));
 
-          if (existingPenduduk[0]) {
-            skippedCount++;
-            continue;
+          if (existingKk[0]) {
+            kkId = existingKk[0].id;
+          } else {
+            const sample = members[0]!;
+            const [newKk] = await tx
+              .insert(kartuKeluargaTable)
+              .values({
+                noKk,
+                noKkHash,
+                alamat: sample.alamat,
+                rt: sample.rt,
+                rw: sample.rw,
+                dusun: "Dusun Krajan",
+                kodePos: "65171",
+              })
+              .returning();
+            kkId = newKk!.id;
           }
 
-          const isKepala = m.shdk.toUpperCase() === "KEPALA KELUARGA" || i === 0;
+          let kepalaId: string | null = null;
+          const hasExplicitKepala = members.some((m) => m.shdk.toUpperCase() === "KEPALA KELUARGA");
 
-          const [created] = await db
-            .insert(pendudukTable)
-            .values({
-              kartuKeluargaId: kkId,
-              nik: m.nik,
-              nikHash,
-              noKk: m.noKk,
-              noKkHash,
-              namaLengkap: m.namaLengkap,
-              tempatLahir: m.tempatLahir,
-              tanggalLahir: m.tanggalLahir,
-              jenisKelamin: m.jenisKelamin,
-              alamat: m.alamat,
-              rt: m.rt,
-              rw: m.rw,
-              agama: m.agama,
-              statusPerkawinan: m.statusPerkawinan,
-              shdk: m.shdk,
-              urutanKk: String(i + 1),
-              pekerjaan: m.pekerjaan,
-              namaAyah: m.namaAyah,
-              namaIbu: m.namaIbu,
-            })
-            .returning();
+          for (let i = 0; i < members.length; i++) {
+            const m = members[i]!;
+            const nikHash = hashKependudukan(m.nik);
 
-          if (created) {
-            insertedCount++;
-            if (isKepala && !kepalaId) {
-              kepalaId = created.id;
+            const existingPenduduk = await tx
+              .select()
+              .from(pendudukTable)
+              .where(eq(pendudukTable.nikHash, nikHash));
+
+            if (existingPenduduk[0]) {
+              skippedCount++;
+              continue;
+            }
+
+            const isKepala = hasExplicitKepala
+              ? m.shdk.toUpperCase() === "KEPALA KELUARGA"
+              : i === 0;
+
+            const [created] = await tx
+              .insert(pendudukTable)
+              .values({
+                kartuKeluargaId: kkId,
+                nik: m.nik,
+                nikHash,
+                noKk: m.noKk,
+                noKkHash,
+                namaLengkap: m.namaLengkap,
+                tempatLahir: m.tempatLahir,
+                tanggalLahir: m.tanggalLahir,
+                jenisKelamin: m.jenisKelamin,
+                alamat: m.alamat,
+                rt: m.rt,
+                rw: m.rw,
+                agama: m.agama,
+                statusPerkawinan: m.statusPerkawinan,
+                shdk: m.shdk,
+                urutanKk: String(i + 1),
+                pekerjaan: m.pekerjaan,
+                namaAyah: m.namaAyah,
+                namaIbu: m.namaIbu,
+              })
+              .returning();
+
+            if (created) {
+              insertedCount++;
+              if (isKepala && !kepalaId) {
+                kepalaId = created.id;
+              }
             }
           }
-        }
 
-        // Update kepala keluarga jika ada
-        if (kepalaId) {
-          await db
-            .update(kartuKeluargaTable)
-            .set({ kepalaKeluargaId: kepalaId })
-            .where(eq(kartuKeluargaTable.id, kkId));
+          if (kepalaId) {
+            await tx
+              .update(kartuKeluargaTable)
+              .set({ kepalaKeluargaId: kepalaId })
+              .where(eq(kartuKeluargaTable.id, kkId));
+          }
         }
-      }
+      });
 
       return reply.send({
         success: true,
