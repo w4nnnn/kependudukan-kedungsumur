@@ -17,7 +17,7 @@ export default function EditKartuKeluargaPage() {
   const { useSession } = authClient
   const { data: session, isPending: isSessionPending } = useSession()
 
-  const { form, isLoading, isFetching, onSubmit } = useEditKk(routeId)
+  const { form, isLoading, isFetching, onSubmit, onInvalid } = useEditKk(routeId)
   const { handleSubmit } = form
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export default function EditKartuKeluargaPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
               <KkFormFields form={form} />
 
               <div className="flex justify-end gap-4 pt-4 border-t">

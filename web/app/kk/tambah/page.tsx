@@ -22,6 +22,7 @@ export default function TambahKartuKeluargaPage() {
     candidateSearch,
     setCandidateSearch,
     onSubmit,
+    onInvalid,
   } = useTambahKk()
 
   const { handleSubmit } = form
@@ -53,7 +54,7 @@ export default function TambahKartuKeluargaPage() {
             <CardDescription>Semua kolom bertanda bintang wajib diisi dengan benar.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
               <KkFormFields form={form} />
 
               <KkKepalaSelector
