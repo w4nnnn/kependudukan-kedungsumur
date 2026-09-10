@@ -10,6 +10,10 @@ export const REGEX_ALAMAT = /^[a-zA-Z0-9\s.,/'-]+$/
 export const REGEX_PEKERJAAN = /^[a-zA-Z0-9\s/.-]+$/
 export const REGEX_DUSUN = /^[a-zA-Z0-9\s.-]+$/
 
+export function sanitizeDigitsOnly(value: string): string {
+  return value.replace(/\D/g, "")
+}
+
 export function blockNonNumericKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
   if (
     ["Backspace", "Tab", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter"].includes(e.key) ||
@@ -19,6 +23,19 @@ export function blockNonNumericKeyDown(e: React.KeyboardEvent<HTMLInputElement>)
     return
   }
   if (!/^\d$/.test(e.key)) {
+    e.preventDefault()
+  }
+}
+
+export function blockNonAlphaKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  if (
+    ["Backspace", "Tab", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter", " "].includes(e.key) ||
+    e.ctrlKey ||
+    e.metaKey
+  ) {
+    return
+  }
+  if (!/^[a-zA-Z'.]$/.test(e.key)) {
     e.preventDefault()
   }
 }

@@ -73,20 +73,20 @@ export const tambahPendudukFormSchema = editPendudukFormSchema.extend({
   kkAlamat: z
     .string()
     .optional()
-    .refine((val) => !val || REGEX_ALAMAT.test(val), {
-      message: "Alamat KK mengandung simbol yang tidak valid",
+    .refine((val) => !val || (val.length >= 5 && REGEX_ALAMAT.test(val)), {
+      message: "Alamat KK minimal 5 karakter dan tidak mengandung simbol ilegal",
     }),
   kkRt: z
     .string()
     .optional()
     .refine((val) => !val || REGEX_RT_RW.test(val), {
-      message: "RT KK harus 3 digit angka",
+      message: "RT KK harus 3 digit angka (contoh: 001)",
     }),
   kkRw: z
     .string()
     .optional()
     .refine((val) => !val || REGEX_RT_RW.test(val), {
-      message: "RW KK harus 3 digit angka",
+      message: "RW KK harus 3 digit angka (contoh: 002)",
     }),
   kkDusun: z
     .string()
