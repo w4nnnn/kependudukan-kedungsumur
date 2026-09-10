@@ -9,7 +9,7 @@ import { Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { authClient } from "@/lib/auth-client"
 import { ThemeToggle } from "@/components/theme-provider"
 
@@ -43,22 +43,22 @@ export default function LoginPage() {
     setErrorMsg(null)
 
     try {
-      console.log("Submitting login...", data.username);
       const res = await authClient.signIn.username({
         username: data.username,
         password: data.password,
       })
-      
-      console.log("Login response:", res);
 
       if (res && res.error) {
         setErrorMsg(res.error.message || "Gagal login. Periksa username dan password Anda.")
       } else {
-        router.push("/kependudukan") 
+        router.push("/dashboard") 
       }
-    } catch (error: any) {
-      console.error("Login catch error:", error);
-      setErrorMsg(error?.message || "Gagal terhubung ke backend server (Port 4000). Pastikan server backend sedang berjalan.")
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Gagal terhubung ke backend server. Pastikan server backend sedang berjalan."
+      setErrorMsg(message)
     } finally {
       setIsLoading(false)
     }

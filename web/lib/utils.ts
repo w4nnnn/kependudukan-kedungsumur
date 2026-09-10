@@ -7,7 +7,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatDateId(date: Date | number | string, formatStr: string = "PPP") {
+export function formatDateId(
+  date: Date | number | string | null | undefined,
+  formatStr: string = "PPP"
+) {
+  if (!date) return "-"
   const d = typeof date === "string" ? new Date(date) : date
+  if (d instanceof Date && isNaN(d.getTime())) return "-"
   return dateFnsFormat(d, formatStr, { locale: id })
 }

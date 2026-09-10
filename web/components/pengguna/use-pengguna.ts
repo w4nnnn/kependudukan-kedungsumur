@@ -1,13 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { authClient } from "@/lib/auth-client"
 import type { AppUser } from "./types"
 
 export function usePengguna(session: unknown) {
-  const router = useRouter()
   const [dataUsers, setDataUsers] = useState<AppUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
