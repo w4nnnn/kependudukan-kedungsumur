@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
+import { useForm, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format, parseISO } from "date-fns"
 import { toast } from "sonner"
@@ -70,6 +70,18 @@ export function useEditKk(routeId: string | undefined) {
     fetchKK()
   }, [routeId, reset, router])
 
+  const onInvalid = (errors: FieldErrors<EditKkFormValues>) => {
+    const errorKeys = Object.keys(errors) as (keyof EditKkFormValues)[]
+    if (errorKeys.length > 0) {
+      const firstError = errors[errorKeys[0]]
+      toast.error("Formulir belum lengkap atau tidak valid", {
+        description:
+          firstError?.message?.toString() ||
+          "Silakan periksa kembali kolom isian yang bertanda merah.",
+      })
+    }
+  }
+
   const onSubmit = async (data: EditKkFormValues) => {
     setIsLoading(true)
     try {
@@ -106,5 +118,6 @@ export function useEditKk(routeId: string | undefined) {
     isLoading,
     isFetching,
     onSubmit,
+    onInvalid,
   }
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
+import { useForm, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import { toast } from "sonner"
@@ -129,6 +129,18 @@ export function useTambahAnggotaKk(
     }
   }
 
+  const onInvalid = (errors: FieldErrors<TambahAnggotaKkFormValues>) => {
+    const errorKeys = Object.keys(errors) as (keyof TambahAnggotaKkFormValues)[]
+    if (errorKeys.length > 0) {
+      const firstError = errors[errorKeys[0]]
+      toast.error("Formulir belum lengkap atau tidak valid", {
+        description:
+          firstError?.message?.toString() ||
+          "Silakan periksa kembali kolom isian yang bertanda merah.",
+      })
+    }
+  }
+
   const onSubmit = async (data: TambahAnggotaKkFormValues) => {
     if (!kkId) return
     setIsLoading(true)
@@ -241,6 +253,7 @@ export function useTambahAnggotaKk(
     setSelectedFile,
     handleSelectCandidate,
     onSubmit,
+    onInvalid,
     resetForm,
   }
 }

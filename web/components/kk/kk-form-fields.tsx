@@ -24,12 +24,18 @@ export function KkFormFields<T extends EditKkFormValues>({ form }: KkFormFieldsP
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2 md:col-span-2">
-        <label className="text-sm font-medium">Nomor Kartu Keluarga (KK)</label>
+        <label className="text-sm font-medium">Nomor Kartu Keluarga (KK) (16 Digit Angka)</label>
         <Input
-          placeholder="16 Digit Nomor KK"
+          placeholder="16 Digit Nomor KK (Angka)"
           maxLength={16}
+          inputMode="numeric"
+          pattern="[0-9]*"
           onKeyDown={blockNonNumericKeyDown}
-          {...register("noKk" as any)}
+          {...register("noKk" as any, {
+            onChange: (e) => {
+              e.target.value = e.target.value.replace(/\D/g, "")
+            },
+          })}
         />
         {errors.noKk && <p className="text-sm text-destructive">{errors.noKk.message as string}</p>}
       </div>
@@ -45,8 +51,14 @@ export function KkFormFields<T extends EditKkFormValues>({ form }: KkFormFieldsP
         <Input
           placeholder="001"
           maxLength={3}
+          inputMode="numeric"
+          pattern="[0-9]*"
           onKeyDown={blockNonNumericKeyDown}
-          {...register("rt" as any)}
+          {...register("rt" as any, {
+            onChange: (e) => {
+              e.target.value = e.target.value.replace(/\D/g, "")
+            },
+          })}
         />
         {errors.rt && <p className="text-sm text-destructive">{errors.rt.message as string}</p>}
       </div>
@@ -56,8 +68,14 @@ export function KkFormFields<T extends EditKkFormValues>({ form }: KkFormFieldsP
         <Input
           placeholder="002"
           maxLength={3}
+          inputMode="numeric"
+          pattern="[0-9]*"
           onKeyDown={blockNonNumericKeyDown}
-          {...register("rw" as any)}
+          {...register("rw" as any, {
+            onChange: (e) => {
+              e.target.value = e.target.value.replace(/\D/g, "")
+            },
+          })}
         />
         {errors.rw && <p className="text-sm text-destructive">{errors.rw.message as string}</p>}
       </div>
@@ -69,12 +87,18 @@ export function KkFormFields<T extends EditKkFormValues>({ form }: KkFormFieldsP
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium">Kode Pos</label>
+        <label className="text-sm font-medium">Kode Pos (5 Digit Angka)</label>
         <Input
           placeholder="65171"
-          maxLength={10}
+          maxLength={5}
+          inputMode="numeric"
+          pattern="[0-9]*"
           onKeyDown={blockNonNumericKeyDown}
-          {...register("kodePos" as any)}
+          {...register("kodePos" as any, {
+            onChange: (e) => {
+              e.target.value = e.target.value.replace(/\D/g, "")
+            },
+          })}
         />
         {errors.kodePos && <p className="text-sm text-destructive">{errors.kodePos.message as string}</p>}
       </div>

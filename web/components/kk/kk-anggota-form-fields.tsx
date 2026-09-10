@@ -119,8 +119,15 @@ export function KkAnggotaFormFields({
           <label className="text-sm font-medium">Urutan Nomor dalam KK</label>
           <Input
             placeholder="Contoh: 1, 2, 3..."
+            maxLength={3}
+            inputMode="numeric"
+            pattern="[0-9]*"
             onKeyDown={blockNonNumericKeyDown}
-            {...register("urutanKk")}
+            {...register("urutanKk", {
+              onChange: (e) => {
+                e.target.value = e.target.value.replace(/\D/g, "")
+              },
+            })}
           />
         </div>
       </div>
@@ -198,10 +205,16 @@ export function KkAnggotaFormFields({
             <div className="space-y-1.5 md:col-span-2">
               <label className="text-xs font-medium">Nomor Induk Kependudukan (NIK) *</label>
               <Input
-                placeholder="16 Digit NIK"
+                placeholder="16 Digit NIK (Angka)"
                 maxLength={16}
+                inputMode="numeric"
+                pattern="[0-9]*"
                 onKeyDown={blockNonNumericKeyDown}
-                {...register("nik")}
+                {...register("nik", {
+                  onChange: (e) => {
+                    e.target.value = e.target.value.replace(/\D/g, "")
+                  },
+                })}
               />
               {errors.nik && <p className="text-xs text-destructive">{errors.nik.message}</p>}
             </div>

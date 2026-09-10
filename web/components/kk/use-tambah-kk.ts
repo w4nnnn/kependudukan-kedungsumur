@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
+import { useForm, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import { toast } from "sonner"
@@ -70,6 +70,18 @@ export function useTambahKk() {
       return () => clearTimeout(timer)
     }
   }, [candidateSearch, modeKepala])
+
+  const onInvalid = (errors: FieldErrors<TambahKkFormValues>) => {
+    const errorKeys = Object.keys(errors) as (keyof TambahKkFormValues)[]
+    if (errorKeys.length > 0) {
+      const firstError = errors[errorKeys[0]]
+      toast.error("Formulir belum lengkap atau tidak valid", {
+        description:
+          firstError?.message?.toString() ||
+          "Silakan periksa kembali kolom isian yang bertanda merah.",
+      })
+    }
+  }
 
   const onSubmit = async (data: TambahKkFormValues) => {
     setIsLoading(true)
@@ -156,5 +168,6 @@ export function useTambahKk() {
     setCandidateSearch,
     modeKepala,
     onSubmit,
+    onInvalid,
   }
 }

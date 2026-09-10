@@ -129,12 +129,18 @@ export function KkKepalaSelector({
         <div className="space-y-4 pt-1">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5 md:col-span-2">
-              <label className="text-xs font-medium">Nomor Induk Kependudukan (NIK)</label>
+              <label className="text-xs font-medium">Nomor Induk Kependudukan (NIK) (16 Digit Angka)</label>
               <Input
-                placeholder="16 Digit NIK Kepala Keluarga"
+                placeholder="16 Digit NIK Kepala Keluarga (Angka)"
                 maxLength={16}
+                inputMode="numeric"
+                pattern="[0-9]*"
                 onKeyDown={blockNonNumericKeyDown}
-                {...register("nikBaru")}
+                {...register("nikBaru", {
+                  onChange: (e) => {
+                    e.target.value = e.target.value.replace(/\D/g, "")
+                  },
+                })}
               />
               {errors.nikBaru && <p className="text-xs text-destructive">{errors.nikBaru.message}</p>}
             </div>
@@ -174,17 +180,22 @@ export function KkKepalaSelector({
                     mode="single"
                     captionLayout="dropdown"
                     selected={watch("tanggalLahirBaru") as Date}
-                    onSelect={(date) => setValue("tanggalLahirBaru", date as Date)}
+                    onSelect={(date) => setValue("tanggalLahirBaru", date as Date, { shouldValidate: true })}
                   />
                 </PopoverContent>
               </Popover>
+              {errors.tanggalLahirBaru && (
+                <p className="text-xs text-destructive">{errors.tanggalLahirBaru.message}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium">Jenis Kelamin</label>
               <Select
                 value={watch("jenisKelaminBaru")}
-                onValueChange={(val) => setValue("jenisKelaminBaru", val as "Laki-laki" | "Perempuan")}
+                onValueChange={(val) =>
+                  setValue("jenisKelaminBaru", val as "Laki-laki" | "Perempuan", { shouldValidate: true })
+                }
               >
                 <SelectTrigger className="h-9 text-xs">
                   <SelectValue placeholder="Pilih jenis kelamin" />
@@ -194,13 +205,16 @@ export function KkKepalaSelector({
                   <SelectItem value="Perempuan">Perempuan</SelectItem>
                 </SelectContent>
               </Select>
+              {errors.jenisKelaminBaru && (
+                <p className="text-xs text-destructive">{errors.jenisKelaminBaru.message}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium">Agama</label>
               <Select
                 value={watch("agamaBaru")}
-                onValueChange={(val) => setValue("agamaBaru", val as any)}
+                onValueChange={(val) => setValue("agamaBaru", val as any, { shouldValidate: true })}
               >
                 <SelectTrigger className="h-9 text-xs">
                   <SelectValue placeholder="Pilih agama" />
@@ -213,13 +227,16 @@ export function KkKepalaSelector({
                   ))}
                 </SelectContent>
               </Select>
+              {errors.agamaBaru && <p className="text-xs text-destructive">{errors.agamaBaru.message}</p>}
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium">Status Perkawinan</label>
               <Select
                 value={watch("statusPerkawinanBaru")}
-                onValueChange={(val) => setValue("statusPerkawinanBaru", val as any)}
+                onValueChange={(val) =>
+                  setValue("statusPerkawinanBaru", val as any, { shouldValidate: true })
+                }
               >
                 <SelectTrigger className="h-9 text-xs">
                   <SelectValue placeholder="Pilih status" />
@@ -232,11 +249,17 @@ export function KkKepalaSelector({
                   ))}
                 </SelectContent>
               </Select>
+              {errors.statusPerkawinanBaru && (
+                <p className="text-xs text-destructive">{errors.statusPerkawinanBaru.message}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium">Pekerjaan</label>
               <Input placeholder="Contoh: Petani / Wiraswasta" {...register("pekerjaanBaru")} />
+              {errors.pekerjaanBaru && (
+                <p className="text-xs text-destructive">{errors.pekerjaanBaru.message}</p>
+              )}
             </div>
           </div>
         </div>

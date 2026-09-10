@@ -33,6 +33,7 @@ export function KkTambahAnggotaCard({
     setSelectedFile,
     handleSelectCandidate,
     onSubmit,
+    onInvalid,
     resetForm,
   } = useTambahAnggotaKk(kkId, nextUrutan, onSuccess)
 
@@ -57,7 +58,7 @@ export function KkTambahAnggotaCard({
         </Button>
       </CardHeader>
       <CardContent className="pt-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
           <KkAnggotaFormFields
             form={form}
             mode={mode}
