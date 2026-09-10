@@ -169,6 +169,87 @@ export async function runExportImportTests(client: TestClient, runner: TestRunne
     assert(res.body.data.errors.length >= 1, "Ada pesan error untuk baris duplikat");
   });
 
+  const testKkExistingNo = generate16Digits("3573");
+  const testNikKepalaAsli = generate16Digits("3573");
+  const testNikAnakImpor = generate16Digits("3573");
+  let testKkExistingId = "";
+  let testKepalaAsliId = "";
+
+  await runner.step("POST /api/penduduk/import (Import Anggota ke KK yang Sudah Ada Tidak Boleh Menimpa Kepala Keluarga)", async () => {
+    const kkRes = await client.request("/api/kk", {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        noKk: testKkExistingNo,
+        alamat: "Jl. Veteran No. 10",
+        rt: "002",
+        rw: "003",
+        modeKepala: "create",
+        newPenduduk: {
+          nik: testNikKepalaAsli,
+          namaLengkap: "Bapak Kepala Asli",
+          tempatLahir: "Kedungsumur",
+          tanggalLahir: "1975-03-10",
+          jenisKelamin: "Laki-laki",
+          agama: "Islam",
+          statusPerkawinan: "Kawin",
+        },
+      }),
+    });
+    assertEqual(kkRes.status, 201, "POST KK status");
+    testKkExistingId = kkRes.body.data.id;
+    testKepalaAsliId = kkRes.body.data.kepalaKeluargaId;
+    assert(Boolean(testKepalaAsliId), "Kepala keluarga awal harus terdaftar");
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Sheet1");
+    worksheet.columns = [
+      { header: "NIK", key: "nik" },
+      { header: "No KK", key: "noKk" },
+      { header: "Nama Lengkap", key: "namaLengkap" },
+      { header: "Jenis Kelamin", key: "jenisKelamin" },
+      { header: "Tempat Lahir", key: "tempatLahir" },
+      { header: "Tanggal Lahir", key: "tanggalLahir" },
+      { header: "Alamat", key: "alamat" },
+      { header: "RT", key: "rt" },
+      { header: "RW", key: "rw" },
+      { header: "SHDK", key: "shdk" },
+    ];
+
+    worksheet.addRow({
+      nik: testNikAnakImpor,
+      noKk: testKkExistingNo,
+      namaLengkap: "Anak Kandung Baru",
+      jenisKelamin: "Laki-laki",
+      tempatLahir: "Kedungsumur",
+      tanggalLahir: "2012-07-21",
+      alamat: "Jl. Veteran No. 10",
+      rt: "002",
+      rw: "003",
+      shdk: "ANAK",
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const formData = new FormData();
+    formData.append("file", new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "import_anak.xlsx");
+
+    const importRes = await client.request("/api/penduduk/import", {
+      method: "POST",
+      headers: client.getAuthHeaders(false),
+      body: formData,
+    });
+    assertEqual(importRes.status, 200, "HTTP Status Import Anak");
+    assertEqual(importRes.body.data.berhasil, 1, "1 baris anak berhasil diimport");
+
+    const detailRes = await client.request(`/api/kk/${testKkExistingId}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(detailRes.status, 200, "GET detail KK status");
+    assertEqual(detailRes.body.data.kepalaKeluargaId, testKepalaAsliId, "Kepala keluarga KK tidak boleh tertimpa oleh anak");
+    assertEqual(detailRes.body.data.kepalaKeluarga?.namaLengkap, "Bapak Kepala Asli", "Nama kepala keluarga tetap bapak asli");
+    assertEqual(detailRes.body.data.jumlahAnggota, 2, "Total anggota keluarga harus menjadi 2");
+  });
+
   const cleanupNik = async (nik: string) => {
     const check = await client.request(`/api/penduduk?nik=${nik}`, {
       headers: client.getAuthHeaders(false),
@@ -196,6 +277,9 @@ export async function runExportImportTests(client: TestClient, runner: TestRunne
   await cleanupNik(testNik1);
   await cleanupNik(testNik2);
   await cleanupNik(duplicateNik);
+  await cleanupNik(testNikKepalaAsli);
+  await cleanupNik(testNikAnakImpor);
   await cleanupKk(testNoKk);
   await cleanupKk(testKkDup);
+  await cleanupKk(testKkExistingNo);
 }

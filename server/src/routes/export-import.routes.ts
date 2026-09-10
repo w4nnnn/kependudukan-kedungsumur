@@ -435,6 +435,9 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
           const noKkHash = hashKependudukan(noKk);
 
           let kkId: string;
+          let existingKepalaId: string | null = null;
+          let baseUrutan = 0;
+
           const existingKk = await tx
             .select()
             .from(kartuKeluargaTable)
@@ -442,6 +445,13 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
 
           if (existingKk[0]) {
             kkId = existingKk[0].id;
+            existingKepalaId = existingKk[0].kepalaKeluargaId;
+
+            const currentMembersCount = await tx
+              .select({ count: sql<number>`cast(count(${pendudukTable.id}) as integer)` })
+              .from(pendudukTable)
+              .where(eq(pendudukTable.kartuKeluargaId, kkId));
+            baseUrutan = currentMembersCount[0]?.count ?? 0;
           } else {
             const sample = members[0]!;
             const [newKk] = await tx
@@ -461,6 +471,7 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
 
           let kepalaId: string | null = null;
           const hasExplicitKepala = members.some((m) => m.shdk.toUpperCase() === "KEPALA KELUARGA");
+          const shouldFallbackFirstAsKepala = !existingKepalaId && !hasExplicitKepala;
 
           for (let i = 0; i < members.length; i++) {
             const m = members[i]!;
@@ -476,9 +487,8 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
               continue;
             }
 
-            const isKepala = hasExplicitKepala
-              ? m.shdk.toUpperCase() === "KEPALA KELUARGA"
-              : i === 0;
+            const isExplicitKepala = m.shdk.toUpperCase() === "KEPALA KELUARGA";
+            const isKepala = isExplicitKepala || (shouldFallbackFirstAsKepala && i === 0);
 
             const [created] = await tx
               .insert(pendudukTable)
@@ -497,8 +507,8 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
                 rw: m.rw,
                 agama: m.agama,
                 statusPerkawinan: m.statusPerkawinan,
-                shdk: m.shdk,
-                urutanKk: String(i + 1),
+                shdk: isKepala && !isExplicitKepala ? "KEPALA KELUARGA" : (m.shdk ? m.shdk.toUpperCase() : "LAINNYA"),
+                urutanKk: String(baseUrutan + i + 1),
                 pekerjaan: m.pekerjaan,
                 namaAyah: m.namaAyah,
                 namaIbu: m.namaIbu,
