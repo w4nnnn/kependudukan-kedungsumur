@@ -3,6 +3,7 @@
 import * as React from "react"
 import { LayoutDashboard, Users, UserCog, LogOut, Contact2 } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
+import Link from "next/link"
 
 import { authClient } from "@/lib/auth-client"
 import {
@@ -50,10 +51,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton 
               render={
-                <a href="/dashboard">
+                <Link href="/dashboard">
                   <LayoutDashboard className="size-4 shrink-0" />
                   <span className="font-medium">Dashboard</span>
-                </a>
+                </Link>
               }
               isActive={pathname === "/dashboard"}
               tooltip="Statistik & Dashboard"
@@ -67,10 +68,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton 
               render={
-                <a href="/kependudukan">
+                <Link href="/kependudukan">
                   <Users className="size-4 shrink-0" />
                   <span className="font-medium">Penduduk</span>
-                </a>
+                </Link>
               }
               isActive={pathname.startsWith("/kependudukan")}
               tooltip="Data Penduduk"
@@ -84,10 +85,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton 
               render={
-                <a href="/kk">
+                <Link href="/kk">
                   <Contact2 className="size-4 shrink-0" />
                   <span className="font-medium">Kartu Keluarga</span>
-                </a>
+                </Link>
               }
               isActive={pathname.startsWith("/kk")}
               tooltip="Data Kartu Keluarga"
@@ -101,10 +102,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton 
               render={
-                <a href="/pengguna">
+                <Link href="/pengguna">
                   <UserCog className="size-4 shrink-0" />
                   <span className="font-medium">Pengguna</span>
-                </a>
+                </Link>
               }
               isActive={pathname.startsWith("/pengguna")}
               tooltip="Manajemen Pengguna"
