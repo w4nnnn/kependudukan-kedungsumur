@@ -201,10 +201,34 @@ export default async function kkRoutes(fastify: FastifyInstance) {
         statusPerkawinan: string;
         pekerjaan?: string;
       };
+      createKepalaKeluarga?: {
+        nik: string;
+        namaLengkap: string;
+        tempatLahir: string;
+        tanggalLahir: string;
+        jenisKelamin: string;
+        agama: string;
+        statusPerkawinan: string;
+        pekerjaan?: string;
+      };
     };
   }>("/api/kk", async (request, reply) => {
     try {
-      const { modeKepala, selectedPendudukId, newPenduduk, ...body } = request.body;
+      const {
+        modeKepala: reqModeKepala,
+        selectedPendudukId: reqSelectedPendudukId,
+        newPenduduk: reqNewPenduduk,
+        createKepalaKeluarga,
+        ...restBody
+      } = request.body as any;
+
+      const effectiveNewPenduduk = reqNewPenduduk || createKepalaKeluarga;
+      const effectiveSelectedPendudukId = reqSelectedPendudukId || restBody.kepalaKeluargaId;
+      const modeKepala = reqModeKepala || (effectiveNewPenduduk ? "create" : effectiveSelectedPendudukId ? "select" : undefined);
+      const selectedPendudukId = effectiveSelectedPendudukId;
+      const newPenduduk = effectiveNewPenduduk;
+
+      const { kepalaKeluargaId: _discardKepalaId, ...body } = restBody;
 
       if (!body.noKk) {
         return reply.status(400).send({ success: false, message: "Nomor KK wajib diisi." });
@@ -212,82 +236,90 @@ export default async function kkRoutes(fastify: FastifyInstance) {
 
       const noKkHash = hashKependudukan(body.noKk);
 
-      // Cek apakah No KK sudah terdaftar
-      const existing = await db
-        .select()
-        .from(kartuKeluargaTable)
-        .where(eq(kartuKeluargaTable.noKkHash, noKkHash));
+      const result = await db.transaction(async (tx) => {
+        const existing = await tx
+          .select()
+          .from(kartuKeluargaTable)
+          .where(eq(kartuKeluargaTable.noKkHash, noKkHash));
 
-      if (existing.length > 0) {
-        return reply.status(400).send({ success: false, message: "Nomor KK sudah terdaftar." });
-      }
+        if (existing.length > 0) {
+          throw { statusCode: 400, message: "Nomor KK sudah terdaftar." };
+        }
 
-      const newKK = await db
-        .insert(kartuKeluargaTable)
-        .values({
-          ...body,
-          noKkHash,
-        })
-        .returning();
-
-      const createdKK = newKK[0];
-      if (!createdKK) {
-        return reply.status(500).send({ success: false, message: "Gagal membuat data Kartu Keluarga." });
-      }
-
-      let kepalaId: string | null = null;
-
-      if (modeKepala === "select" && selectedPendudukId) {
-        kepalaId = selectedPendudukId;
-        await db
-          .update(pendudukTable)
-          .set({
-            kartuKeluargaId: createdKK.id,
-            noKk: createdKK.noKk,
-            noKkHash: createdKK.noKkHash,
-            alamat: createdKK.alamat,
-            rt: createdKK.rt,
-            rw: createdKK.rw,
-            shdk: "KEPALA KELUARGA",
-            urutanKk: "1",
-          })
-          .where(eq(pendudukTable.id, selectedPendudukId));
-      } else if (modeKepala === "create" && newPenduduk && newPenduduk.nik && newPenduduk.namaLengkap) {
-        const nikHash = hashKependudukan(newPenduduk.nik);
-        const [insertedPenduduk] = await db
-          .insert(pendudukTable)
+        const newKK = await tx
+          .insert(kartuKeluargaTable)
           .values({
-            ...newPenduduk,
-            kartuKeluargaId: createdKK.id,
-            nikHash,
-            noKk: createdKK.noKk,
-            noKkHash: createdKK.noKkHash,
-            alamat: createdKK.alamat,
-            rt: createdKK.rt,
-            rw: createdKK.rw,
-            shdk: "KEPALA KELUARGA",
-            urutanKk: "1",
+            ...body,
+            noKkHash,
           })
           .returning();
 
-        if (insertedPenduduk) {
-          kepalaId = insertedPenduduk.id;
+        const createdKK = newKK[0];
+        if (!createdKK) {
+          throw { statusCode: 500, message: "Gagal membuat data Kartu Keluarga." };
         }
-      }
 
-      if (kepalaId) {
-        await db
-          .update(kartuKeluargaTable)
-          .set({ kepalaKeluargaId: kepalaId })
-          .where(eq(kartuKeluargaTable.id, createdKK.id));
-      }
+        let kepalaId: string | null = null;
+
+        if (modeKepala === "select" && selectedPendudukId) {
+          kepalaId = selectedPendudukId;
+          await tx
+            .update(pendudukTable)
+            .set({
+              kartuKeluargaId: createdKK.id,
+              noKk: createdKK.noKk,
+              noKkHash: createdKK.noKkHash,
+              alamat: createdKK.alamat,
+              rt: createdKK.rt,
+              rw: createdKK.rw,
+              shdk: "KEPALA KELUARGA",
+              urutanKk: "1",
+            })
+            .where(eq(pendudukTable.id, selectedPendudukId));
+        } else if (modeKepala === "create" && newPenduduk && newPenduduk.nik && newPenduduk.namaLengkap) {
+          const nikHash = hashKependudukan(newPenduduk.nik);
+          const [insertedPenduduk] = await tx
+            .insert(pendudukTable)
+            .values({
+              ...newPenduduk,
+              kartuKeluargaId: createdKK.id,
+              nikHash,
+              noKk: createdKK.noKk,
+              noKkHash: createdKK.noKkHash,
+              alamat: createdKK.alamat,
+              rt: createdKK.rt,
+              rw: createdKK.rw,
+              shdk: "KEPALA KELUARGA",
+              urutanKk: "1",
+            })
+            .returning();
+
+          if (insertedPenduduk) {
+            kepalaId = insertedPenduduk.id;
+          }
+        }
+
+        if (kepalaId) {
+          const [updatedKK] = await tx
+            .update(kartuKeluargaTable)
+            .set({ kepalaKeluargaId: kepalaId })
+            .where(eq(kartuKeluargaTable.id, createdKK.id))
+            .returning();
+          return updatedKK || { ...createdKK, kepalaKeluargaId: kepalaId };
+        }
+
+        return createdKK;
+      });
 
       return reply.status(201).send({
         success: true,
         message: "Data Kartu Keluarga berhasil ditambahkan.",
-        data: createdKK,
+        data: result,
       });
     } catch (error: any) {
+      if (error?.statusCode && error?.message) {
+        return reply.status(error.statusCode).send({ success: false, message: error.message });
+      }
       fastify.log.error(error);
       const isUniqueViolation =
         error?.code === "23505" ||
@@ -516,22 +548,24 @@ export default async function kkRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ success: false, message: "Data Kartu Keluarga tidak ditemukan." });
       }
 
-      // Lepaskan tautan KK dari penduduk
-      await db
-        .update(pendudukTable)
-        .set({
-          kartuKeluargaId: null,
-          shdk: "LAINNYA",
-        })
-        .where(and(eq(pendudukTable.id, pendudukId), eq(pendudukTable.kartuKeluargaId, id)));
+      await db.transaction(async (tx) => {
+        await tx
+          .update(pendudukTable)
+          .set({
+            kartuKeluargaId: null,
+            noKk: "-",
+            noKkHash: hashKependudukan("-"),
+            shdk: "LAINNYA",
+          })
+          .where(and(eq(pendudukTable.id, pendudukId), eq(pendudukTable.kartuKeluargaId, id)));
 
-      // Jika yang dikeluarkan adalah kepala keluarga, kosongkan kepalaKeluargaId pada KK
-      if (targetKk.kepalaKeluargaId === pendudukId) {
-        await db
-          .update(kartuKeluargaTable)
-          .set({ kepalaKeluargaId: null })
-          .where(eq(kartuKeluargaTable.id, id));
-      }
+        if (targetKk.kepalaKeluargaId === pendudukId) {
+          await tx
+            .update(kartuKeluargaTable)
+            .set({ kepalaKeluargaId: null })
+            .where(eq(kartuKeluargaTable.id, id));
+        }
+      });
 
       return reply.send({
         success: true,
@@ -548,21 +582,28 @@ export default async function kkRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params;
 
-      const deletedData = await db
-        .delete(kartuKeluargaTable)
-        .where(eq(kartuKeluargaTable.id, id))
-        .returning();
+      const deleted = await db.transaction(async (tx) => {
+        await tx
+          .update(pendudukTable)
+          .set({
+            kartuKeluargaId: null,
+            noKk: "-",
+            noKkHash: hashKependudukan("-"),
+            shdk: "LAINNYA",
+          })
+          .where(eq(pendudukTable.kartuKeluargaId, id));
 
-      const deleted = deletedData[0];
+        const deletedData = await tx
+          .delete(kartuKeluargaTable)
+          .where(eq(kartuKeluargaTable.id, id))
+          .returning();
+
+        return deletedData[0];
+      });
+
       if (!deleted) {
         return reply.status(404).send({ success: false, message: "Data Kartu Keluarga tidak ditemukan." });
       }
-
-      // Set kartuKeluargaId menjadi null pada semua anggota penduduk terkait
-      await db
-        .update(pendudukTable)
-        .set({ kartuKeluargaId: null })
-        .where(eq(pendudukTable.kartuKeluargaId, id));
 
       return reply.send({
         success: true,

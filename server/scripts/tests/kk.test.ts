@@ -54,6 +54,115 @@ export async function runKKTests(client: TestClient, runner: TestRunner) {
     assertEqual(res.body.message, "Nomor KK sudah terdaftar.", "response.message");
   });
 
+  const testNoKkModeCreate = generate16Digits("3573");
+  const testNikKepalaModeCreate = generate16Digits("3573");
+  let createdKkModeCreateId = "";
+  let createdKepalaModeCreateId = "";
+
+  await runner.step("POST /api/kk (Tambah KK Mode 'create' dengan Kepala Keluarga Baru)", async () => {
+    const res = await client.request("/api/kk", {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        noKk: testNoKkModeCreate,
+        alamat: "Jl. Melati RT 002 RW 001",
+        rt: "002",
+        rw: "001",
+        dusun: "Dusun Krajan",
+        kodePos: "65171",
+        modeKepala: "create",
+        createKepalaKeluarga: {
+          nik: testNikKepalaModeCreate,
+          namaLengkap: "Pak Kepala Mode Create Test",
+          tempatLahir: "Kedungsumur",
+          tanggalLahir: "1985-04-12",
+          jenisKelamin: "Laki-laki",
+          agama: "Islam",
+          statusPerkawinan: "Kawin",
+          pekerjaan: "Pedagang",
+        },
+      }),
+    });
+
+    assertEqual(res.status, 201, "HTTP Status");
+    assertEqual(res.body.success, true, "response.success");
+    assert(Boolean(res.body.data.kepalaKeluargaId), "data.kepalaKeluargaId harus terisi");
+    createdKkModeCreateId = res.body.data.id;
+    createdKepalaModeCreateId = res.body.data.kepalaKeluargaId;
+
+    const detailRes = await client.request(`/api/kk/${createdKkModeCreateId}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(detailRes.status, 200, "GET detail status");
+    assert(Boolean(detailRes.body.data.kepalaKeluarga), "detail data.kepalaKeluarga harus ada");
+    assertEqual(detailRes.body.data.kepalaKeluarga.nik, testNikKepalaModeCreate, "NIK kepala keluarga cocok");
+    assertEqual(detailRes.body.data.kepalaKeluarga.namaLengkap, "Pak Kepala Mode Create Test", "Nama kepala cocok");
+    assertEqual(detailRes.body.data.jumlahAnggota, 1, "jumlahAnggota harus 1");
+  });
+
+  const testNoKkModeSelect = generate16Digits("3573");
+  const testNikKepalaModeSelect = generate16Digits("3573");
+  let createdKkModeSelectId = "";
+  let createdKepalaModeSelectId = "";
+
+  await runner.step("POST /api/kk (Tambah KK Mode 'select' dengan Penduduk Terdaftar)", async () => {
+    const pendRes = await client.request("/api/penduduk", {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        nik: testNikKepalaModeSelect,
+        noKk: testNoKkModeSelect,
+        namaLengkap: "Pak Kepala Mode Select Test",
+        tempatLahir: "Kedungsumur",
+        tanggalLahir: "1978-08-17",
+        jenisKelamin: "Laki-laki",
+        alamat: "Jl. Mawar RT 001 RW 002",
+        rt: "001",
+        rw: "002",
+        agama: "Islam",
+        statusPerkawinan: "Kawin",
+        shdk: "LAINNYA",
+      }),
+    });
+    assertEqual(pendRes.status, 201, "POST penduduk pre-select status");
+    createdKepalaModeSelectId = pendRes.body.data.id;
+
+    const res = await client.request("/api/kk", {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        noKk: testNoKkModeSelect,
+        alamat: "Jl. Mawar RT 001 RW 002",
+        rt: "001",
+        rw: "002",
+        dusun: "Dusun Krajan",
+        kodePos: "65171",
+        modeKepala: "select",
+        selectedPendudukId: createdKepalaModeSelectId,
+      }),
+    });
+
+    assertEqual(res.status, 201, "HTTP Status");
+    assertEqual(res.body.success, true, "response.success");
+    assertEqual(res.body.data.kepalaKeluargaId, createdKepalaModeSelectId, "kepalaKeluargaId cocok");
+    createdKkModeSelectId = res.body.data.id;
+
+    const detailRes = await client.request(`/api/kk/${createdKkModeSelectId}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(detailRes.status, 200, "GET detail status");
+    assert(Boolean(detailRes.body.data.kepalaKeluarga), "detail data.kepalaKeluarga harus ada");
+    assertEqual(detailRes.body.data.kepalaKeluarga.id, createdKepalaModeSelectId, "ID kepala cocok");
+    assertEqual(detailRes.body.data.kepalaKeluarga.shdk, "KEPALA KELUARGA", "SHDK kepala cocok");
+    assertEqual(detailRes.body.data.jumlahAnggota, 1, "jumlahAnggota harus 1");
+
+    const residentRes = await client.request(`/api/penduduk/${createdKepalaModeSelectId}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(residentRes.body.data.kartuKeluargaId, createdKkModeSelectId, "kartuKeluargaId penduduk sinkron");
+    assertEqual(residentRes.body.data.shdk, "KEPALA KELUARGA", "shdk penduduk sinkron");
+  });
+
   await runner.step("POST /api/penduduk (Tambah Penduduk sebagai Kepala Keluarga)", async () => {
     const res = await client.request("/api/penduduk", {
       method: "POST",
@@ -267,6 +376,18 @@ export async function runKKTests(client: TestClient, runner: TestRunner) {
       headers: client.getAuthHeaders(false),
     });
     assertEqual(detailRes.body.data.jumlahAnggota, 1, "jumlah anggota berkurang menjadi 1");
+
+    const removedPendudukRes = await client.request(`/api/penduduk/${createdAnggotaId}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(removedPendudukRes.body.data.kartuKeluargaId, null, "kartuKeluargaId null");
+    assertEqual(removedPendudukRes.body.data.noKk, "-", "noKk harus direset ke '-' setelah dikeluarkan dari KK");
+
+    const searchOldKkRes = await client.request(`/api/penduduk?nokk=${testNoKk}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    const foundOldMember = searchOldKkRes.body.data.some((p: any) => p.id === createdAnggotaId);
+    assertEqual(foundOldMember, false, "Anggota yang dikeluarkan tidak boleh muncul saat mencari No KK lama");
   });
 
   await runner.step("DELETE /api/kk/:id (Hapus Kartu Keluarga)", async () => {
@@ -295,6 +416,30 @@ export async function runKKTests(client: TestClient, runner: TestRunner) {
   });
   if (createdAnggotaBaruId) {
     await client.request(`/api/penduduk/${createdAnggotaBaruId}`, {
+      method: "DELETE",
+      headers: client.getAuthHeaders(false),
+    });
+  }
+  if (createdKkModeCreateId) {
+    await client.request(`/api/kk/${createdKkModeCreateId}`, {
+      method: "DELETE",
+      headers: client.getAuthHeaders(false),
+    });
+  }
+  if (createdKepalaModeCreateId) {
+    await client.request(`/api/penduduk/${createdKepalaModeCreateId}`, {
+      method: "DELETE",
+      headers: client.getAuthHeaders(false),
+    });
+  }
+  if (createdKkModeSelectId) {
+    await client.request(`/api/kk/${createdKkModeSelectId}`, {
+      method: "DELETE",
+      headers: client.getAuthHeaders(false),
+    });
+  }
+  if (createdKepalaModeSelectId) {
+    await client.request(`/api/penduduk/${createdKepalaModeSelectId}`, {
       method: "DELETE",
       headers: client.getAuthHeaders(false),
     });

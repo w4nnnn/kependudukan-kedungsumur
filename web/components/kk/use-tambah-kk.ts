@@ -96,6 +96,7 @@ export function useTambahKk() {
         tanggalDikeluarkan: data.tanggalDikeluarkan
           ? format(data.tanggalDikeluarkan, "yyyy-MM-dd")
           : undefined,
+        modeKepala: data.modeKepala,
       }
 
       if (data.modeKepala === "select") {
@@ -104,7 +105,7 @@ export function useTambahKk() {
           setIsLoading(false)
           return
         }
-        payload.kepalaKeluargaId = data.selectedPendudukId
+        payload.selectedPendudukId = data.selectedPendudukId
       } else if (data.modeKepala === "create") {
         if (!data.nikBaru || data.nikBaru.length !== 16) {
           toast.error("NIK Kepala Keluarga harus 16 digit.")
@@ -127,7 +128,7 @@ export function useTambahKk() {
           return
         }
 
-        payload.createKepalaKeluarga = {
+        payload.newPenduduk = {
           nik: data.nikBaru,
           namaLengkap: data.namaBaru,
           tempatLahir: data.tempatLahirBaru,
