@@ -22,10 +22,12 @@ export function usePengguna(session: unknown) {
   const fetchUsers = async (search = "", page = 1) => {
     setIsLoading(true)
     try {
+      const isFilteredByRtRw = selectedRt !== "ALL" || selectedRw !== "ALL"
+
       const res = await authClient.admin.listUsers({
         query: {
-          limit: 100,
-          offset: 0,
+          limit: isFilteredByRtRw ? 500 : limit,
+          offset: isFilteredByRtRw ? 0 : (page - 1) * limit,
           ...(search.trim()
             ? {
                 searchValue: search.trim(),
@@ -45,9 +47,14 @@ export function usePengguna(session: unknown) {
           users = users.filter((u) => u.rw === selectedRw)
         }
 
-        setTotalData(users.length)
-        const startIndex = (page - 1) * limit
-        setDataUsers(users.slice(startIndex, startIndex + limit))
+        if (isFilteredByRtRw) {
+          setTotalData(users.length)
+          const startIndex = (page - 1) * limit
+          setDataUsers(users.slice(startIndex, startIndex + limit))
+        } else {
+          setTotalData((res.data as any).total ?? users.length)
+          setDataUsers(users)
+        }
       } else if (res.error) {
         toast.error("Gagal memuat data pengguna", {
           description: res.error.message || "Pastikan Anda memiliki hak akses admin.",

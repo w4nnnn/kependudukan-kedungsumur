@@ -103,6 +103,14 @@ export async function runAuthTests(client: TestClient, runner: TestRunner) {
     assertEqual(res.body.user.id, res.body.session.userId, "user.id vs session.userId");
     assertEqual(res.body.user.username, config.adminUsername, "user.username");
     assertEqual(res.body.user.role, "admin", "user.role");
+
+    const adminUserId = res.body.user.id;
+    const getUserRes = await client.request(`/api/auth/admin/get-user?id=${adminUserId}`, {
+      headers: client.getAuthHeaders(),
+    });
+    assertEqual(getUserRes.status, 200, "HTTP Status get-user");
+    assertType(getUserRes.body, "object", "response user");
+    assertEqual(getUserRes.body.id, adminUserId, "user.id cocok");
   });
 
   await runner.step("GET /api/me (Validasi Response Rute Terproteksi)", async () => {

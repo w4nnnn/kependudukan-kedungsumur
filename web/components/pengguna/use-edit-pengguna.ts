@@ -49,32 +49,45 @@ export function useEditPengguna(userId: string | undefined, sessionUserId?: stri
     if (!userId) return
     setIsLoadingUser(true)
     try {
-      const res = await authClient.admin.listUsers({
-        query: {
-          limit: 100,
-        },
-      })
+      let found: UserDetail | null = null
 
-      if (res.data) {
-        const found = (res.data.users as UserDetail[]).find((u) => u.id === userId)
-        if (found) {
-          setUserData(found)
-          profileForm.reset({
-            name: found.name,
-            email: found.email,
-            role: (found.role as "admin" | "user") || "user",
-            rt: found.rt || "",
-            rw: found.rw || "",
-          })
-          setBanReasonInput(found.banReason || "")
-        } else {
-          toast.error("Pengguna tidak ditemukan")
-          router.push("/pengguna")
-        }
-      } else {
-        toast.error("Gagal memuat data pengguna", {
-          description: res.error?.message,
+      try {
+        const userRes = await (authClient.admin as any).getUser({
+          query: {
+            id: userId,
+          },
         })
+        if (userRes?.data) {
+          found = (userRes.data.user || userRes.data) as UserDetail
+        }
+      } catch {
+        found = null
+      }
+
+      if (!found || !found.id) {
+        const res = await authClient.admin.listUsers({
+          query: {
+            limit: 100,
+          },
+        })
+
+        if (res?.data?.users) {
+          found = (res.data.users as UserDetail[]).find((u) => u.id === userId) || null
+        }
+      }
+
+      if (found && found.id) {
+        setUserData(found)
+        profileForm.reset({
+          name: found.name,
+          email: found.email,
+          role: (found.role as "admin" | "user") || "user",
+          rt: found.rt || "",
+          rw: found.rw || "",
+        })
+        setBanReasonInput(found.banReason || "")
+      } else {
+        toast.error("Pengguna tidak ditemukan")
         router.push("/pengguna")
       }
     } catch (error) {
