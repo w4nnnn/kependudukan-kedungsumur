@@ -1,6 +1,7 @@
 import { TestClient, TestRunner } from "./client.js";
 import { assert, assertEqual, assertType, validatePendudukSchema, validatePaginationMeta } from "./assertions.js";
 import { generate16Digits, colors } from "./config.js";
+import { decryptAesGcm, encryptAesGcm } from "../../src/db/schema/schema.js";
 
 export async function runPendudukTests(client: TestClient, runner: TestRunner) {
   console.log(`\n${colors.bright}4. Manajemen Data Penduduk (CRUD & Keamanan Data)${colors.reset}`);
@@ -280,5 +281,20 @@ export async function runPendudukTests(client: TestClient, runner: TestRunner) {
       method: "DELETE",
       headers: client.getAuthHeaders(false),
     });
+  });
+
+  await runner.step("decryptAesGcm & encryptAesGcm (Robustness terhadap ciphertext rusak dan input invalid tanpa melempar crash)", async () => {
+    const corruptBase64 = Buffer.alloc(32, 0x41).toString("base64");
+    const result = decryptAesGcm(corruptBase64);
+    assertEqual(result, corruptBase64, "Ciphertext rusak harus dikembalikan dengan aman tanpa throw");
+
+    const nonStringInput: any = 12345;
+    const encryptedNonString = encryptAesGcm(nonStringInput);
+    assertEqual(encryptedNonString, nonStringInput, "encryptAesGcm harus aman menangani non-string input");
+
+    const originalText = "3573010101900001";
+    const encrypted = encryptAesGcm(originalText);
+    const decrypted = decryptAesGcm(encrypted);
+    assertEqual(decrypted, originalText, "Enkripsi dan dekripsi roundtrip harus cocok");
   });
 }
