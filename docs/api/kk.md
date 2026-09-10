@@ -149,19 +149,45 @@ Seluruh endpoint di bawah ini memerlukan proteksi autentikasi (Sesi aktif Better
 
 - **URL:** `/api/kk/:id/anggota`
 - **Method:** `POST`
-- **Request Body (JSON):**
+- **Request Body (Pilihan 1: Mode Select - Tautkan Penduduk Terdaftar):**
   ```json
   {
+    "mode": "select",
     "pendudukId": "a9d8c36b-7128-4034-9ff2-1a2b3c4d5e6f",
     "shdk": "ANAK",
     "urutanKk": "3"
   }
   ```
-- **Success Response (200 OK):**
+- **Request Body (Pilihan 2: Mode Create - Input Penduduk Baru Langsung ke KK):**
+  ```json
+  {
+    "mode": "create",
+    "shdk": "ANAK",
+    "urutanKk": "3",
+    "penduduk": {
+      "nik": "3573010101850009",
+      "namaLengkap": "Anak Baru",
+      "tempatLahir": "Kedungsumur",
+      "tanggalLahir": "2015-08-20",
+      "jenisKelamin": "Laki-laki",
+      "agama": "Islam",
+      "statusPerkawinan": "Belum Kawin",
+      "pekerjaan": "Pelajar"
+    }
+  }
+  ```
+- **Success Response (200 / 201 Created):**
   ```json
   {
     "success": true,
-    "message": "Penduduk Budi Santoso berhasil ditambahkan ke Kartu Keluarga."
+    "message": "Penduduk Anak Baru berhasil ditambahkan ke Kartu Keluarga.",
+    "data": {
+      "id": "b3e8c36b-7128-4034-9ff2-1a2b3c4d5e7a",
+      "nik": "3573010101850009",
+      "namaLengkap": "Anak Baru",
+      "kartuKeluargaId": "c1f7b76e-526e-44db-bb23-96b6e4e5bcde",
+      "fotoUrl": null
+    }
   }
   ```
 

@@ -13,17 +13,6 @@ import {
   type TambahAnggotaKkFormValues,
 } from "./kk-form-schema"
 
-interface KKInfo {
-  id: string
-  noKk: string
-  alamat: string
-  rt: string
-  rw: string
-  dusun?: string | null
-  jumlahAnggota: number
-  kepalaKeluargaNama?: string | null
-}
-
 export function useTambahAnggotaKk(
   kkId: string | undefined,
   initialUrutan?: number,
@@ -31,8 +20,6 @@ export function useTambahAnggotaKk(
 ) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [isFetchingKK, setIsFetchingKK] = useState(false)
-  const [kkInfo, setKkInfo] = useState<KKInfo | null>(null)
 
   const [mode, setMode] = useState<"select" | "create">("select")
   const [candidateList, setCandidateList] = useState<CandidatePenduduk[]>([])
@@ -240,8 +227,6 @@ export function useTambahAnggotaKk(
   return {
     form,
     isLoading,
-    isFetchingKK,
-    kkInfo,
     mode,
     setMode,
     candidateList,

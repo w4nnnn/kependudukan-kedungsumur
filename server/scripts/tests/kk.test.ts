@@ -8,10 +8,12 @@ export async function runKKTests(client: TestClient, runner: TestRunner) {
   const testNoKk = generate16Digits("3573");
   const testNikKepala = generate16Digits("3573");
   const testNikAnggota = generate16Digits("3573");
+  const testNikAnggotaBaru = generate16Digits("3573");
 
   let createdKkId = "";
   let createdKepalaId = "";
   let createdAnggotaId = "";
+  let createdAnggotaBaruId = "";
 
   const dummyKk = {
     noKk: testNoKk,
@@ -141,6 +143,33 @@ export async function runKKTests(client: TestClient, runner: TestRunner) {
     assertEqual(found.noKk, dummyKk.noKk, "found.noKk");
   });
 
+  await runner.step("GET /api/kk?search=... (Pencarian Nama Kepala Keluarga)", async () => {
+    const res = await client.request(`/api/kk?search=Kepala%20Keluarga%20Test`, {
+      headers: client.getAuthHeaders(false),
+    });
+
+    assertEqual(res.status, 200, "HTTP Status");
+    assertEqual(res.body.success, true, "response.success");
+    assert(res.body.data.length >= 1, "Menemukan KK berdasarkan nama kepala keluarga");
+    validatePaginationMeta(res.body.meta);
+    assert(res.body.meta.total >= 1, "Meta total merefleksikan pencarian");
+    const found = res.body.data.find((item: any) => item.id === createdKkId);
+    assert(found !== undefined, "KK yang dicari harus ditemukan");
+  });
+
+  await runner.step("GET /api/kk?search=... (Pencarian Nomor KK 16 Digit)", async () => {
+    const res = await client.request(`/api/kk?search=${dummyKk.noKk}`, {
+      headers: client.getAuthHeaders(false),
+    });
+
+    assertEqual(res.status, 200, "HTTP Status");
+    assertEqual(res.body.success, true, "response.success");
+    assertEqual(res.body.data.length, 1, "Menemukan tepat 1 KK berdasarkan nomor KK");
+    validatePaginationMeta(res.body.meta);
+    assertEqual(res.body.meta.total, 1, "Meta total tepat 1");
+    assertEqual(res.body.data[0].id, createdKkId, "ID KK cocok");
+  });
+
   await runner.step("PUT /api/kk/:id (Update Alamat KK & Sinkronisasi ke Anggota)", async () => {
     const updatePayload = {
       alamat: "Jl. Diponegoro No. 99 Barokah",
@@ -166,6 +195,57 @@ export async function runKKTests(client: TestClient, runner: TestRunner) {
     assertEqual(checkPenduduk.body.data.rt, updatePayload.rt, "rt anggota tersinkron");
   });
 
+  await runner.step("POST /api/kk/:id/anggota (Tambah Anggota Baru Mode 'create')", async () => {
+    const res = await client.request(`/api/kk/${createdKkId}/anggota`, {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        mode: "create",
+        shdk: "ANAK",
+        urutanKk: "3",
+        penduduk: {
+          nik: testNikAnggotaBaru,
+          namaLengkap: "Anak Kedua Test Mode Create",
+          tempatLahir: "Kedungsumur",
+          tanggalLahir: "2015-08-20",
+          jenisKelamin: "Laki-laki",
+          agama: "Islam",
+          statusPerkawinan: "Belum Kawin",
+          pekerjaan: "Pelajar",
+        },
+      }),
+    });
+
+    assertEqual(res.status, 201, "HTTP Status");
+    assertEqual(res.body.success, true, "response.success");
+    assert(res.body.data !== undefined, "response.data harus ada");
+    assertEqual(res.body.data.nik, testNikAnggotaBaru, "data.nik sesuai");
+    createdAnggotaBaruId = res.body.data.id;
+  });
+
+  await runner.step("POST /api/kk/:id/anggota (Validasi NIK Duplikat Mode 'create' -> Expect 400)", async () => {
+    const res = await client.request(`/api/kk/${createdKkId}/anggota`, {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        mode: "create",
+        shdk: "ANAK",
+        penduduk: {
+          nik: testNikAnggotaBaru,
+          namaLengkap: "Duplikat NIK",
+          tempatLahir: "Kedungsumur",
+          tanggalLahir: "2015-08-20",
+          jenisKelamin: "Laki-laki",
+          agama: "Islam",
+          statusPerkawinan: "Belum Kawin",
+        },
+      }),
+    });
+
+    assertEqual(res.status, 400, "HTTP Status");
+    assertEqual(res.body.success, false, "response.success");
+  });
+
   await runner.step("DELETE /api/kk/:id/anggota/:pendudukId (Keluarkan Anggota dari KK)", async () => {
     const res = await client.request(`/api/kk/${createdKkId}/anggota/${createdAnggotaId}`, {
       method: "DELETE",
@@ -174,6 +254,14 @@ export async function runKKTests(client: TestClient, runner: TestRunner) {
 
     assertEqual(res.status, 200, "HTTP Status");
     assertEqual(res.body.success, true, "response.success");
+
+    const res2 = await client.request(`/api/kk/${createdKkId}/anggota/${createdAnggotaBaruId}`, {
+      method: "DELETE",
+      headers: client.getAuthHeaders(false),
+    });
+
+    assertEqual(res2.status, 200, "HTTP Status");
+    assertEqual(res2.body.success, true, "response.success");
 
     const detailRes = await client.request(`/api/kk/${createdKkId}`, {
       headers: client.getAuthHeaders(false),
@@ -205,4 +293,10 @@ export async function runKKTests(client: TestClient, runner: TestRunner) {
     method: "DELETE",
     headers: client.getAuthHeaders(false),
   });
+  if (createdAnggotaBaruId) {
+    await client.request(`/api/penduduk/${createdAnggotaBaruId}`, {
+      method: "DELETE",
+      headers: client.getAuthHeaders(false),
+    });
+  }
 }

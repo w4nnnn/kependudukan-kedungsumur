@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
 import { kartuKeluargaTable, pendudukTable, hashKependudukan } from "../db/schema/schema.js";
-import { eq, ilike, and, sql, asc, desc } from "drizzle-orm";
+import { eq, ilike, and, or, sql, asc, desc, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 import { getPublicFotoUrl } from "../lib/minio.js";
 
@@ -31,6 +31,20 @@ export default async function kkRoutes(fastify: FastifyInstance) {
         conditions.push(eq(kartuKeluargaTable.noKkHash, hashKependudukan(nokk)));
       }
 
+      if (search) {
+        const trimmed = String(search).trim();
+        if (/^\d{16}$/.test(trimmed)) {
+          conditions.push(
+            or(
+              eq(kartuKeluargaTable.noKkHash, hashKependudukan(trimmed)),
+              ilike(pendudukTable.namaLengkap, `%${trimmed}%`)
+            )
+          );
+        } else {
+          conditions.push(ilike(pendudukTable.namaLengkap, `%${trimmed}%`));
+        }
+      }
+
       if (rt) {
         conditions.push(eq(kartuKeluargaTable.rt, rt));
       }
@@ -43,15 +57,7 @@ export default async function kkRoutes(fastify: FastifyInstance) {
         conditions.push(ilike(kartuKeluargaTable.dusun, `%${dusun}%`));
       }
 
-      const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
-
-      // Subquery count anggota per KK
-      const totalCount = await db
-        .select({ count: sql<number>`cast(count(${kartuKeluargaTable.id}) as integer)` })
-        .from(kartuKeluargaTable)
-        .where(whereCondition);
-
-      const kkList = await db
+      let query = db
         .select({
           id: kartuKeluargaTable.id,
           noKk: kartuKeluargaTable.noKk,
@@ -68,24 +74,29 @@ export default async function kkRoutes(fastify: FastifyInstance) {
         })
         .from(kartuKeluargaTable)
         .leftJoin(pendudukTable, eq(kartuKeluargaTable.kepalaKeluargaId, pendudukTable.id))
-        .where(whereCondition)
-        .orderBy(desc(kartuKeluargaTable.createdAt))
-        .limit(Number(limit))
-        .offset(offset);
+        .$dynamic();
 
-      // Filter search nama kepala keluarga atau no KK jika ada query search
-      let filteredData = kkList;
-      if (search) {
-        const searchLower = search.toLowerCase();
-        filteredData = kkList.filter((item) => {
-          return (
-            (item.kepalaKeluargaNama && item.kepalaKeluargaNama.toLowerCase().includes(searchLower)) ||
-            (item.noKk && item.noKk.includes(search))
-          );
-        });
+      let countQuery = db
+        .select({ count: sql<number>`cast(count(${kartuKeluargaTable.id}) as integer)` })
+        .from(kartuKeluargaTable)
+        .leftJoin(pendudukTable, eq(kartuKeluargaTable.kepalaKeluargaId, pendudukTable.id))
+        .$dynamic();
+
+      if (conditions.length > 0) {
+        const whereCondition = and(...conditions);
+        query = query.where(whereCondition);
+        countQuery = countQuery.where(whereCondition);
       }
 
-      const kkIds = filteredData.map((k) => k.id);
+      const [kkList, totalCount] = await Promise.all([
+        query
+          .orderBy(desc(kartuKeluargaTable.createdAt))
+          .limit(Number(limit))
+          .offset(offset),
+        countQuery,
+      ]);
+
+      const kkIds = kkList.map((k) => k.id);
       let memberCounts: Record<string, number> = {};
       let memberNames: Record<string, string[]> = {};
 
@@ -97,7 +108,7 @@ export default async function kkRoutes(fastify: FastifyInstance) {
             shdk: pendudukTable.shdk,
           })
           .from(pendudukTable)
-          .where(sql`${pendudukTable.kartuKeluargaId} IN ${kkIds}`)
+          .where(inArray(pendudukTable.kartuKeluargaId, kkIds))
           .orderBy(asc(pendudukTable.urutanKk));
 
         members.forEach((m) => {
@@ -111,7 +122,7 @@ export default async function kkRoutes(fastify: FastifyInstance) {
         });
       }
 
-      const result = filteredData.map((kk) => ({
+      const result = kkList.map((kk) => ({
         ...kk,
         jumlahAnggota: memberCounts[kk.id] || 0,
         daftarAnggota: memberNames[kk.id] || [],
@@ -353,20 +364,93 @@ export default async function kkRoutes(fastify: FastifyInstance) {
   // 5. POST /api/kk/:id/anggota (Menambahkan Penduduk ke Dalam KK)
   fastify.post<{
     Params: ParamsWithId;
-    Body: { pendudukId: string; shdk?: string; urutanKk?: string };
+    Body: {
+      mode?: "select" | "create";
+      pendudukId?: string;
+      shdk?: string;
+      urutanKk?: string;
+      penduduk?: {
+        nik: string;
+        namaLengkap: string;
+        tempatLahir: string;
+        tanggalLahir: string;
+        jenisKelamin: string;
+        agama: string;
+        statusPerkawinan: string;
+        pekerjaan?: string;
+        namaAyah?: string;
+        namaIbu?: string;
+        pendidikan?: string;
+        golonganDarah?: string;
+      };
+    };
   }>("/api/kk/:id/anggota", async (request, reply) => {
     try {
       const { id } = request.params;
-      const { pendudukId, shdk = "ANGGOTA KELUARGA", urutanKk } = request.body;
-
-      if (!pendudukId) {
-        return reply.status(400).send({ success: false, message: "Penduduk ID wajib disertakan." });
-      }
+      const { mode = "select", pendudukId, shdk = "ANGGOTA KELUARGA", urutanKk, penduduk } = request.body;
 
       const kk = await db.select().from(kartuKeluargaTable).where(eq(kartuKeluargaTable.id, id));
       const targetKk = kk[0];
       if (!targetKk) {
         return reply.status(404).send({ success: false, message: "Data Kartu Keluarga tidak ditemukan." });
+      }
+
+      if (mode === "create" || (!pendudukId && penduduk)) {
+        if (!penduduk) {
+          return reply.status(400).send({ success: false, message: "Data penduduk baru wajib disertakan." });
+        }
+        if (!penduduk.nik || penduduk.nik.length !== 16 || !/^\d{16}$/.test(penduduk.nik)) {
+          return reply.status(400).send({ success: false, message: "NIK harus 16 digit angka." });
+        }
+        if (!penduduk.namaLengkap || penduduk.namaLengkap.trim().length < 3) {
+          return reply.status(400).send({ success: false, message: "Nama lengkap minimal 3 karakter." });
+        }
+        if (!penduduk.tanggalLahir) {
+          return reply.status(400).send({ success: false, message: "Tanggal lahir wajib diisi." });
+        }
+
+        const nikHash = hashKependudukan(penduduk.nik);
+        const existing = await db.select().from(pendudukTable).where(eq(pendudukTable.nikHash, nikHash));
+        if (existing.length > 0) {
+          return reply.status(400).send({ success: false, message: "NIK sudah terdaftar." });
+        }
+
+        const [createdPenduduk] = await db
+          .insert(pendudukTable)
+          .values({
+            ...penduduk,
+            kartuKeluargaId: id,
+            nikHash,
+            noKk: targetKk.noKk,
+            noKkHash: targetKk.noKkHash,
+            alamat: targetKk.alamat,
+            rt: targetKk.rt,
+            rw: targetKk.rw,
+            shdk: shdk,
+            urutanKk: urutanKk || "1",
+          })
+          .returning();
+
+        if (!createdPenduduk) {
+          return reply.status(500).send({ success: false, message: "Gagal membuat data penduduk baru." });
+        }
+
+        if (shdk.toUpperCase() === "KEPALA KELUARGA") {
+          await db
+            .update(kartuKeluargaTable)
+            .set({ kepalaKeluargaId: createdPenduduk.id })
+            .where(eq(kartuKeluargaTable.id, id));
+        }
+
+        return reply.status(201).send({
+          success: true,
+          message: `Penduduk ${createdPenduduk.namaLengkap} berhasil ditambahkan ke Kartu Keluarga.`,
+          data: withFotoUrl(createdPenduduk),
+        });
+      }
+
+      if (!pendudukId) {
+        return reply.status(400).send({ success: false, message: "Penduduk ID wajib disertakan." });
       }
 
       const existingPenduduk = await db.select().from(pendudukTable).where(eq(pendudukTable.id, pendudukId));
@@ -376,7 +460,7 @@ export default async function kkRoutes(fastify: FastifyInstance) {
       }
 
       // Tautkan penduduk ke KK dan sinkronkan noKk serta alamatnya
-      await db
+      const [updatedPenduduk] = await db
         .update(pendudukTable)
         .set({
           kartuKeluargaId: id,
@@ -388,7 +472,8 @@ export default async function kkRoutes(fastify: FastifyInstance) {
           shdk: shdk,
           urutanKk: urutanKk || targetPenduduk.urutanKk,
         })
-        .where(eq(pendudukTable.id, pendudukId));
+        .where(eq(pendudukTable.id, pendudukId))
+        .returning();
 
       // Jika SHDK adalah KEPALA KELUARGA, perbarui kepalaKeluargaId pada KK
       if (shdk.toUpperCase() === "KEPALA KELUARGA") {
@@ -401,9 +486,19 @@ export default async function kkRoutes(fastify: FastifyInstance) {
       return reply.send({
         success: true,
         message: `Penduduk ${targetPenduduk.namaLengkap} berhasil ditambahkan ke Kartu Keluarga.`,
+        data: withFotoUrl(updatedPenduduk || targetPenduduk),
       });
-    } catch (error) {
+    } catch (error: any) {
       fastify.log.error(error);
+      const isUniqueViolation =
+        error?.code === "23505" ||
+        error?.cause?.code === "23505" ||
+        error?.message?.includes("duplicate key") ||
+        error?.cause?.message?.includes("duplicate key");
+
+      if (isUniqueViolation) {
+        return reply.status(400).send({ success: false, message: "NIK sudah terdaftar." });
+      }
       return reply.status(500).send({ success: false, message: "Gagal menambahkan anggota ke Kartu Keluarga." });
     }
   });
