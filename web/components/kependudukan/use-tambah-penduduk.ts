@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
+import { useForm, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import { toast } from "sonner"
@@ -89,10 +89,22 @@ export function useTambahPenduduk() {
     const found = kkList.find((k) => k.id === kkId)
     if (found) {
       setSelectedKkData(found)
-      setValue("noKk", found.noKk)
-      setValue("alamat", found.alamat)
-      setValue("rt", found.rt)
-      setValue("rw", found.rw)
+      setValue("noKk", found.noKk, { shouldValidate: true })
+      setValue("alamat", found.alamat, { shouldValidate: true })
+      setValue("rt", found.rt, { shouldValidate: true })
+      setValue("rw", found.rw, { shouldValidate: true })
+    }
+  }
+
+  const onInvalid = (errors: FieldErrors<TambahPendudukFormValues>) => {
+    const errorKeys = Object.keys(errors) as (keyof TambahPendudukFormValues)[]
+    if (errorKeys.length > 0) {
+      const firstError = errors[errorKeys[0]]
+      toast.error("Formulir belum lengkap atau tidak valid", {
+        description:
+          firstError?.message?.toString() ||
+          "Silakan periksa kembali kolom isian yang bertanda merah.",
+      })
     }
   }
 
@@ -111,12 +123,24 @@ export function useTambahPenduduk() {
         ...pendudukPayload
       } = data
 
+      const effectiveAlamat = (kkAlamat?.trim() || data.alamat?.trim()) ?? ""
+      const effectiveRt = (kkRt?.trim() || data.rt?.trim()) ?? ""
+      const effectiveRw = (kkRw?.trim() || data.rw?.trim()) ?? ""
+
       const payload: Record<string, unknown> = {
         ...pendudukPayload,
+        alamat: effectiveAlamat,
+        rt: effectiveRt,
+        rw: effectiveRw,
         tanggalLahir: format(data.tanggalLahir, "yyyy-MM-dd"),
       }
 
-      if (modeKk === "select" && selectedKkId) {
+      if (modeKk === "select") {
+        if (!selectedKkId) {
+          toast.error("Pilih Kartu Keluarga terdaftar terlebih dahulu.")
+          setIsLoading(false)
+          return
+        }
         payload.kartuKeluargaId = selectedKkId
       } else if (modeKk === "create") {
         if (!data.noKk || data.noKk.length !== 16) {
@@ -124,12 +148,12 @@ export function useTambahPenduduk() {
           setIsLoading(false)
           return
         }
-        if (!kkAlamat || kkAlamat.length < 5) {
+        if (!effectiveAlamat || effectiveAlamat.length < 5) {
           toast.error("Alamat domisili KK minimal 5 karakter.")
           setIsLoading(false)
           return
         }
-        if (!kkRt || kkRt.length !== 3 || !kkRw || kkRw.length !== 3) {
+        if (!effectiveRt || effectiveRt.length !== 3 || !effectiveRw || effectiveRw.length !== 3) {
           toast.error("RT dan RW Kartu Keluarga harus 3 digit (contoh: 001).")
           setIsLoading(false)
           return
@@ -137,11 +161,11 @@ export function useTambahPenduduk() {
 
         payload.createKk = {
           noKk: data.noKk,
-          alamat: kkAlamat,
-          rt: kkRt,
-          rw: kkRw,
-          dusun: kkDusun,
-          kodePos: kkKodePos,
+          alamat: effectiveAlamat,
+          rt: effectiveRt,
+          rw: effectiveRw,
+          dusun: kkDusun || undefined,
+          kodePos: kkKodePos || undefined,
           tanggalDikeluarkan: kkTanggalDikeluarkan
             ? format(kkTanggalDikeluarkan, "yyyy-MM-dd")
             : undefined,
@@ -204,5 +228,6 @@ export function useTambahPenduduk() {
     isLoadingKk,
     handleSelectKk,
     onSubmit,
+    onInvalid,
   }
 }

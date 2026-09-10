@@ -38,10 +38,16 @@ export function KependudukanBiodataFields<T extends EditPendudukFormValues>({
         <div className="space-y-2 md:col-span-2">
           <label className="text-sm font-medium">Nomor Kartu Keluarga (KK)</label>
           <Input
-            placeholder="16 Digit Nomor KK"
+            placeholder="16 Digit Nomor KK (Angka)"
             maxLength={16}
+            inputMode="numeric"
+            pattern="[0-9]*"
             onKeyDown={blockNonNumericKeyDown}
-            {...register("noKk" as any)}
+            {...register("noKk" as any, {
+              onChange: (e) => {
+                e.target.value = e.target.value.replace(/\D/g, "")
+              },
+            })}
           />
           {errors.noKk && <p className="text-sm text-destructive">{errors.noKk.message as string}</p>}
         </div>
@@ -51,10 +57,16 @@ export function KependudukanBiodataFields<T extends EditPendudukFormValues>({
       <div className="space-y-2 md:col-span-2">
         <label className="text-sm font-medium">Nomor Induk Kependudukan (NIK)</label>
         <Input
-          placeholder="16 Digit NIK"
+          placeholder="16 Digit NIK (Angka)"
           maxLength={16}
+          inputMode="numeric"
+          pattern="[0-9]*"
           onKeyDown={blockNonNumericKeyDown}
-          {...register("nik" as any)}
+          {...register("nik" as any, {
+            onChange: (e) => {
+              e.target.value = e.target.value.replace(/\D/g, "")
+            },
+          })}
         />
         {errors.nik && <p className="text-sm text-destructive">{errors.nik.message as string}</p>}
       </div>
@@ -140,8 +152,14 @@ export function KependudukanBiodataFields<T extends EditPendudukFormValues>({
         <Input
           placeholder="Contoh: 001"
           maxLength={3}
+          inputMode="numeric"
+          pattern="[0-9]*"
           onKeyDown={blockNonNumericKeyDown}
-          {...register("rt" as any)}
+          {...register("rt" as any, {
+            onChange: (e) => {
+              e.target.value = e.target.value.replace(/\D/g, "")
+            },
+          })}
         />
         {errors.rt && <p className="text-sm text-destructive">{errors.rt.message as string}</p>}
       </div>
@@ -151,8 +169,14 @@ export function KependudukanBiodataFields<T extends EditPendudukFormValues>({
         <Input
           placeholder="Contoh: 002"
           maxLength={3}
+          inputMode="numeric"
+          pattern="[0-9]*"
           onKeyDown={blockNonNumericKeyDown}
-          {...register("rw" as any)}
+          {...register("rw" as any, {
+            onChange: (e) => {
+              e.target.value = e.target.value.replace(/\D/g, "")
+            },
+          })}
         />
         {errors.rw && <p className="text-sm text-destructive">{errors.rw.message as string}</p>}
       </div>
