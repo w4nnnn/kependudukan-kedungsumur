@@ -129,12 +129,18 @@ export function KependudukanKkSelector({
         <div className="space-y-4 pt-1">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5 md:col-span-2">
-              <label className="text-xs font-medium">Nomor Kartu Keluarga (16 Digit)</label>
+              <label className="text-xs font-medium">Nomor Kartu Keluarga (16 Digit Angka)</label>
               <Input
                 placeholder="Contoh: 3573010101800001"
                 maxLength={16}
+                inputMode="numeric"
+                pattern="[0-9]*"
                 onKeyDown={blockNonNumericKeyDown}
-                {...register("noKk")}
+                {...register("noKk", {
+                  onChange: (e) => {
+                    e.target.value = e.target.value.replace(/\D/g, "")
+                  },
+                })}
               />
               {errors.noKk && <p className="text-xs text-destructive">{errors.noKk.message}</p>}
             </div>
@@ -144,9 +150,14 @@ export function KependudukanKkSelector({
               <Input
                 placeholder="Nama jalan, gang, atau nomor rumah"
                 {...register("kkAlamat", {
-                  onChange: (e) => setValue("alamat", e.target.value),
+                  onChange: (e) =>
+                    setValue("alamat", e.target.value, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    }),
                 })}
               />
+              {errors.kkAlamat && <p className="text-xs text-destructive">{errors.kkAlamat.message}</p>}
             </div>
 
             <div className="space-y-1.5">
@@ -154,11 +165,21 @@ export function KependudukanKkSelector({
               <Input
                 placeholder="001"
                 maxLength={3}
+                inputMode="numeric"
+                pattern="[0-9]*"
                 onKeyDown={blockNonNumericKeyDown}
                 {...register("kkRt", {
-                  onChange: (e) => setValue("rt", e.target.value),
+                  onChange: (e) => {
+                    const sanitized = e.target.value.replace(/\D/g, "")
+                    e.target.value = sanitized
+                    setValue("rt", sanitized, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    })
+                  },
                 })}
               />
+              {errors.kkRt && <p className="text-xs text-destructive">{errors.kkRt.message}</p>}
             </div>
 
             <div className="space-y-1.5">
@@ -166,26 +187,44 @@ export function KependudukanKkSelector({
               <Input
                 placeholder="002"
                 maxLength={3}
+                inputMode="numeric"
+                pattern="[0-9]*"
                 onKeyDown={blockNonNumericKeyDown}
                 {...register("kkRw", {
-                  onChange: (e) => setValue("rw", e.target.value),
+                  onChange: (e) => {
+                    const sanitized = e.target.value.replace(/\D/g, "")
+                    e.target.value = sanitized
+                    setValue("rw", sanitized, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    })
+                  },
                 })}
               />
+              {errors.kkRw && <p className="text-xs text-destructive">{errors.kkRw.message}</p>}
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium">Dusun</label>
               <Input placeholder="Contoh: Dusun Krajan" {...register("kkDusun")} />
+              {errors.kkDusun && <p className="text-xs text-destructive">{errors.kkDusun.message}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium">Kode Pos</label>
+              <label className="text-xs font-medium">Kode Pos (5 Digit Angka)</label>
               <Input
                 placeholder="65171"
-                maxLength={10}
+                maxLength={5}
+                inputMode="numeric"
+                pattern="[0-9]*"
                 onKeyDown={blockNonNumericKeyDown}
-                {...register("kkKodePos")}
+                {...register("kkKodePos", {
+                  onChange: (e) => {
+                    e.target.value = e.target.value.replace(/\D/g, "")
+                  },
+                })}
               />
+              {errors.kkKodePos && <p className="text-xs text-destructive">{errors.kkKodePos.message}</p>}
             </div>
 
             <div className="flex flex-col space-y-1.5 md:col-span-2">
@@ -209,10 +248,13 @@ export function KependudukanKkSelector({
                     mode="single"
                     captionLayout="dropdown"
                     selected={watch("kkTanggalDikeluarkan") as Date}
-                    onSelect={(date) => setValue("kkTanggalDikeluarkan", date as Date)}
+                    onSelect={(date) => setValue("kkTanggalDikeluarkan", date as Date, { shouldValidate: true })}
                   />
                 </PopoverContent>
               </Popover>
+              {errors.kkTanggalDikeluarkan && (
+                <p className="text-xs text-destructive">{errors.kkTanggalDikeluarkan.message}</p>
+              )}
             </div>
           </div>
         </div>
