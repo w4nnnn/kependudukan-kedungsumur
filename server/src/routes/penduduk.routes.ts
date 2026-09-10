@@ -374,8 +374,20 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
   fastify.delete<{ Params: ParamsWithId }>("/api/penduduk/:id", async (request, reply) => {
     try {
       const { id } = request.params;
-      const deletedData = await db.delete(pendudukTable).where(eq(pendudukTable.id, id)).returning();
-      const deleted = deletedData[0];
+
+      const deleted = await db.transaction(async (tx) => {
+        await tx
+          .update(kartuKeluargaTable)
+          .set({ kepalaKeluargaId: null })
+          .where(eq(kartuKeluargaTable.kepalaKeluargaId, id));
+
+        const deletedData = await tx
+          .delete(pendudukTable)
+          .where(eq(pendudukTable.id, id))
+          .returning();
+
+        return deletedData[0];
+      });
 
       if (!deleted) {
         return reply.status(404).send({ success: false, message: "Data penduduk tidak ditemukan." });

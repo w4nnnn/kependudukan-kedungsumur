@@ -230,4 +230,55 @@ export async function runPendudukTests(client: TestClient, runner: TestRunner) {
     assertEqual(res.body.success, false, "response.success");
     assertEqual(res.body.message, "Data penduduk tidak ditemukan.", "response.message");
   });
+
+  const testKkForDeleteNo = generate16Digits("3573");
+  const testNikKepalaToDelete = generate16Digits("3573");
+  let testKkForDeleteId = "";
+  let testKepalaToDeleteId = "";
+
+  await runner.step("DELETE /api/penduduk/:id (Hapus Penduduk yang Berstatus Kepala Keluarga Harus Mengosongkan kepalaKeluargaId pada KK)", async () => {
+    const kkRes = await client.request("/api/kk", {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        noKk: testKkForDeleteNo,
+        alamat: "Jl. Sukarno Hatta No. 8",
+        rt: "001",
+        rw: "001",
+        modeKepala: "create",
+        newPenduduk: {
+          nik: testNikKepalaToDelete,
+          namaLengkap: "Bapak Akan Dihapus",
+          tempatLahir: "Kedungsumur",
+          tanggalLahir: "1970-01-01",
+          jenisKelamin: "Laki-laki",
+          agama: "Islam",
+          statusPerkawinan: "Kawin",
+        },
+      }),
+    });
+    assertEqual(kkRes.status, 201, "POST KK status");
+    testKkForDeleteId = kkRes.body.data.id;
+    testKepalaToDeleteId = kkRes.body.data.kepalaKeluargaId;
+    assert(Boolean(testKepalaToDeleteId), "Kepala keluarga harus terbentuk");
+
+    const delRes = await client.request(`/api/penduduk/${testKepalaToDeleteId}`, {
+      method: "DELETE",
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(delRes.status, 200, "DELETE penduduk status");
+    assertEqual(delRes.body.success, true, "DELETE penduduk success");
+
+    const kkDetailRes = await client.request(`/api/kk/${testKkForDeleteId}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(kkDetailRes.status, 200, "GET KK detail status");
+    assertEqual(kkDetailRes.body.data.kepalaKeluargaId, null, "kepalaKeluargaId pada KK harus menjadi null");
+    assertEqual(kkDetailRes.body.data.kepalaKeluarga, null, "kepalaKeluarga detail harus null");
+
+    await client.request(`/api/kk/${testKkForDeleteId}`, {
+      method: "DELETE",
+      headers: client.getAuthHeaders(false),
+    });
+  });
 }
