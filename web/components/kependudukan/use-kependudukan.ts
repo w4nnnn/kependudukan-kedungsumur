@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { API_BASE_URL } from "@/lib/config"
+import { downloadFileFromApi } from "@/lib/utils"
 import type { Penduduk, ImportResult } from "./types"
 
 export function useKependudukan(session: unknown) {
@@ -81,15 +82,28 @@ export function useKependudukan(session: unknown) {
     return () => clearTimeout(delayDebounceFn)
   }, [searchQuery, session])
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const url = new URL(`${API_BASE_URL}/api/penduduk/export`)
     if (selectedRt !== "ALL") url.searchParams.append("rt", selectedRt)
     if (selectedRw !== "ALL") url.searchParams.append("rw", selectedRw)
-    window.open(url.toString(), "_blank")
+    
+    toast.info("Menyiapkan berkas...", { description: "Sedang mengekspor data penduduk ke Excel." })
+    const res = await downloadFileFromApi(url.toString(), "data_penduduk_kedungsumur.xlsx")
+    if (res.success) {
+      toast.success("Berhasil", { description: "Data penduduk berhasil diekspor." })
+    } else {
+      toast.error("Gagal Mengekspor", { description: res.message || "Terjadi kesalahan." })
+    }
   }
 
-  const handleDownloadTemplate = () => {
-    window.open(`${API_BASE_URL}/api/penduduk/template`, "_blank")
+  const handleDownloadTemplate = async () => {
+    toast.info("Menyiapkan template...", { description: "Sedang mengunduh template Excel." })
+    const res = await downloadFileFromApi(`${API_BASE_URL}/api/penduduk/template`, "template_penduduk_kedungsumur.xlsx")
+    if (res.success) {
+      toast.success("Berhasil", { description: "Template Excel berhasil diunduh." })
+    } else {
+      toast.error("Gagal Mengunduh Template", { description: res.message || "Terjadi kesalahan." })
+    }
   }
 
   const handleImportSubmit = async () => {

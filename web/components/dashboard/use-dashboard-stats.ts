@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { API_BASE_URL } from "@/lib/config"
+import { downloadFileFromApi } from "@/lib/utils"
 import type { StatsData } from "./types"
 
 export function useDashboardStats(session: unknown) {
@@ -43,11 +44,18 @@ export function useDashboardStats(session: unknown) {
     }
   }, [session, selectedRt, selectedRw])
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     const url = new URL(`${API_BASE_URL}/api/stats/pdf`)
     if (selectedRt !== "ALL") url.searchParams.append("rt", selectedRt)
     if (selectedRw !== "ALL") url.searchParams.append("rw", selectedRw)
-    window.open(url.toString(), "_blank")
+
+    toast.info("Menyiapkan dokumen...", { description: "Sedang mengunduh laporan PDF statistik kependudukan." })
+    const res = await downloadFileFromApi(url.toString(), "laporan_statistik_desa_kedungsumur.pdf")
+    if (res.success) {
+      toast.success("Berhasil", { description: "Laporan PDF statistik berhasil diunduh." })
+    } else {
+      toast.error("Gagal Mengunduh PDF", { description: res.message || "Terjadi kesalahan." })
+    }
   }
 
   return {

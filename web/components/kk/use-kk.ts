@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { API_BASE_URL } from "@/lib/config"
+import { downloadFileFromApi } from "@/lib/utils"
 import type { KartuKeluarga } from "./types"
 
 export function useKK(session: unknown) {
@@ -76,11 +77,18 @@ export function useKK(session: unknown) {
     return () => clearTimeout(delayDebounceFn)
   }, [searchQuery, session])
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const url = new URL(`${API_BASE_URL}/api/kk/export`)
     if (selectedRt !== "ALL") url.searchParams.append("rt", selectedRt)
     if (selectedRw !== "ALL") url.searchParams.append("rw", selectedRw)
-    window.open(url.toString(), "_blank")
+
+    toast.info("Menyiapkan berkas...", { description: "Sedang mengekspor data Kartu Keluarga ke Excel." })
+    const res = await downloadFileFromApi(url.toString(), "data_kartu_keluarga_kedungsumur.xlsx")
+    if (res.success) {
+      toast.success("Berhasil", { description: "Data Kartu Keluarga berhasil diekspor." })
+    } else {
+      toast.error("Gagal Mengekspor", { description: res.message || "Terjadi kesalahan." })
+    }
   }
 
   const handleDelete = async () => {
