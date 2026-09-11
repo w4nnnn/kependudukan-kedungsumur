@@ -60,6 +60,33 @@ export async function runPendudukTests(client: TestClient, runner: TestRunner) {
     assertEqual(res.body.message, "NIK sudah terdaftar.", "response.message");
   });
 
+  await runner.step("POST /api/penduduk dengan createKk saat NIK Duplikat (Rollback Atomik -> KK Tidak Boleh Tersimpan)", async () => {
+    const orphanKkNumber = generate16Digits("3573");
+    const res = await client.request("/api/penduduk", {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        ...dummyPenduduk,
+        createKk: {
+          noKk: orphanKkNumber,
+          alamat: "Jl. Tes Rollback Transaksi",
+          rt: "001",
+          rw: "001",
+        },
+      }),
+    });
+
+    assertEqual(res.status, 400, "HTTP Status");
+    assertEqual(res.body.success, false, "response.success");
+    assertEqual(res.body.message, "NIK sudah terdaftar.", "response.message");
+
+    const checkKkRes = await client.request(`/api/kk?nokk=${orphanKkNumber}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(checkKkRes.status, 200, "HTTP Status cek KK");
+    assertEqual(checkKkRes.body.data.length, 0, "KK harus bersih / di-rollback (0 record)");
+  });
+
   await runner.step("GET /api/penduduk/:id (Detail Penduduk & Validasi Dekripsi Otomatis)", async () => {
     const res = await client.request(`/api/penduduk/${createdPendudukId}`, {
       headers: client.getAuthHeaders(false),
@@ -151,6 +178,49 @@ export async function runPendudukTests(client: TestClient, runner: TestRunner) {
     assertEqual(res.body.data.rt, updatedPayload.rt, "data.rt (terupdate)");
     assertEqual(res.body.data.namaLengkap, dummyPenduduk.namaLengkap, "data.namaLengkap (tidak berubah)");
     assertEqual(res.body.data.nik, dummyPenduduk.nik, "data.nik (tidak berubah)");
+  });
+
+  await runner.step("PUT /api/penduduk/:id (Sinkronisasi Otomatis kartuKeluargaId saat noKk Diubah)", async () => {
+    const newKkTargetNo = generate16Digits("3573");
+    const kkCreateRes = await client.request("/api/kk", {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        noKk: newKkTargetNo,
+        alamat: "Jl. Baru Target Sinkron",
+        rt: "003",
+        rw: "003",
+      }),
+    });
+    assertEqual(kkCreateRes.status, 201, "POST target KK status");
+    const targetKkId = kkCreateRes.body.data.id;
+
+    const updateKkRes = await client.request(`/api/penduduk/${createdPendudukId}`, {
+      method: "PUT",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({ noKk: newKkTargetNo }),
+    });
+    assertEqual(updateKkRes.status, 200, "Update noKk penduduk status");
+    assertEqual(updateKkRes.body.data.kartuKeluargaId, targetKkId, "kartuKeluargaId harus sinkron ke targetKkId");
+
+    const detachRes = await client.request(`/api/penduduk/${createdPendudukId}`, {
+      method: "PUT",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({ noKk: "-" }),
+    });
+    assertEqual(detachRes.status, 200, "Detach noKk penduduk status");
+    assertEqual(detachRes.body.data.kartuKeluargaId, null, "kartuKeluargaId harus null saat noKk '-'");
+
+    await client.request(`/api/penduduk/${createdPendudukId}`, {
+      method: "PUT",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({ noKk: dummyPenduduk.noKk }),
+    });
+
+    await client.request(`/api/kk/${targetKkId}`, {
+      method: "DELETE",
+      headers: client.getAuthHeaders(false),
+    });
   });
 
   await runner.step("POST /api/penduduk/:id/foto (Upload Foto Penduduk)", async () => {
@@ -283,10 +353,15 @@ export async function runPendudukTests(client: TestClient, runner: TestRunner) {
     });
   });
 
-  await runner.step("decryptAesGcm & encryptAesGcm (Robustness terhadap ciphertext rusak dan input invalid tanpa melempar crash)", async () => {
+  await runner.step("decryptAesGcm & encryptAesGcm (Proteksi terhadap ciphertext rusak dengan melempar error dan input invalid aman)", async () => {
     const corruptBase64 = Buffer.alloc(32, 0x41).toString("base64");
-    const result = decryptAesGcm(corruptBase64);
-    assertEqual(result, corruptBase64, "Ciphertext rusak harus dikembalikan dengan aman tanpa throw");
+    let threw = false;
+    try {
+      decryptAesGcm(corruptBase64);
+    } catch {
+      threw = true;
+    }
+    assert(threw, "Ciphertext rusak harus melempar error agar tidak memicu data poisoning");
 
     const nonStringInput: any = 12345;
     const encryptedNonString = encryptAesGcm(nonStringInput);

@@ -154,83 +154,92 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
     try {
       const { createKk, ...body } = request.body as any;
 
-      let kartuKeluargaId = body.kartuKeluargaId;
-      let noKk = body.noKk;
-
-      if (createKk) {
-        if (!createKk.noKk || createKk.noKk.length !== 16) {
-          return reply.status(400).send({ success: false, message: "Nomor KK harus 16 digit." });
-        }
-        noKk = createKk.noKk;
-        const newKkHash = hashKependudukan(createKk.noKk);
-
-        const existingKk = await db
-          .select()
-          .from(kartuKeluargaTable)
-          .where(eq(kartuKeluargaTable.noKkHash, newKkHash));
-        if (existingKk.length > 0) {
-          return reply.status(400).send({ success: false, message: "Nomor KK sudah terdaftar." });
-        }
-
-        const insertedKk = await db
-          .insert(kartuKeluargaTable)
-          .values({
-            noKk: createKk.noKk,
-            noKkHash: newKkHash,
-            alamat: createKk.alamat || body.alamat,
-            rt: createKk.rt || body.rt,
-            rw: createKk.rw || body.rw,
-            dusun: createKk.dusun || null,
-            kodePos: createKk.kodePos || null,
-            tanggalDikeluarkan: createKk.tanggalDikeluarkan || null,
-          })
-          .returning();
-
-        if (!insertedKk[0]) {
-          return reply.status(500).send({ success: false, message: "Gagal membuat data Kartu Keluarga." });
-        }
-        kartuKeluargaId = insertedKk[0].id;
+      if (createKk && (!createKk.noKk || createKk.noKk.length !== 16)) {
+        return reply.status(400).send({ success: false, message: "Nomor KK harus 16 digit." });
       }
 
-      const noKkHash = hashKependudukan(noKk);
+      const created = await db.transaction(async (tx) => {
+        let kartuKeluargaId = body.kartuKeluargaId;
+        let noKk = body.noKk;
 
-      if (!kartuKeluargaId) {
-        const existingKk = await db
-          .select()
-          .from(kartuKeluargaTable)
-          .where(eq(kartuKeluargaTable.noKkHash, noKkHash));
-        if (existingKk[0]) {
-          kartuKeluargaId = existingKk[0].id;
+        if (createKk) {
+          noKk = createKk.noKk;
+          const newKkHash = hashKependudukan(createKk.noKk);
+
+          const existingKk = await tx
+            .select()
+            .from(kartuKeluargaTable)
+            .where(eq(kartuKeluargaTable.noKkHash, newKkHash));
+          if (existingKk.length > 0) {
+            throw { statusCode: 400, message: "Nomor KK sudah terdaftar." };
+          }
+
+          const insertedKk = await tx
+            .insert(kartuKeluargaTable)
+            .values({
+              noKk: createKk.noKk,
+              noKkHash: newKkHash,
+              alamat: createKk.alamat || body.alamat,
+              rt: createKk.rt || body.rt,
+              rw: createKk.rw || body.rw,
+              dusun: createKk.dusun || null,
+              kodePos: createKk.kodePos || null,
+              tanggalDikeluarkan: createKk.tanggalDikeluarkan || null,
+            })
+            .returning();
+
+          if (!insertedKk[0]) {
+            throw { statusCode: 500, message: "Gagal membuat data Kartu Keluarga." };
+          }
+          kartuKeluargaId = insertedKk[0].id;
         }
-      }
 
-      const newPendudukData = {
-        ...body,
-        noKk,
-        kartuKeluargaId,
-        nikHash: hashKependudukan(body.nik),
-        noKkHash: noKkHash,
-      };
-      
-      const newData = await db.insert(pendudukTable).values(newPendudukData).returning();
-      const created = newData[0];
-      if (!created) {
-        return reply.status(500).send({ success: false, message: "Gagal menyimpan data." });
-      }
+        const noKkHash = hashKependudukan(noKk);
 
-      if (kartuKeluargaId && body.shdk && body.shdk.toUpperCase() === "KEPALA KELUARGA") {
-        await db
-          .update(kartuKeluargaTable)
-          .set({ kepalaKeluargaId: created.id })
-          .where(eq(kartuKeluargaTable.id, kartuKeluargaId));
-      }
-      
+        if (!kartuKeluargaId) {
+          const existingKk = await tx
+            .select()
+            .from(kartuKeluargaTable)
+            .where(eq(kartuKeluargaTable.noKkHash, noKkHash));
+          if (existingKk[0]) {
+            kartuKeluargaId = existingKk[0].id;
+          }
+        }
+
+        const newPendudukData = {
+          ...body,
+          noKk,
+          kartuKeluargaId,
+          nikHash: hashKependudukan(body.nik),
+          noKkHash: noKkHash,
+        };
+
+        const newData = await tx.insert(pendudukTable).values(newPendudukData).returning();
+        const createdRecord = newData[0];
+        if (!createdRecord) {
+          throw { statusCode: 500, message: "Gagal menyimpan data." };
+        }
+
+        if (kartuKeluargaId && body.shdk && body.shdk.toUpperCase() === "KEPALA KELUARGA") {
+          await tx
+            .update(kartuKeluargaTable)
+            .set({ kepalaKeluargaId: createdRecord.id })
+            .where(eq(kartuKeluargaTable.id, kartuKeluargaId));
+        }
+
+        return createdRecord;
+      });
+
       return reply.status(201).send({ 
         success: true, 
         message: "Data penduduk berhasil ditambahkan.",
         data: withFotoUrl(created)
       });
     } catch (error: any) {
+      if (error?.statusCode && error?.message) {
+        return reply.status(error.statusCode).send({ success: false, message: error.message });
+      }
+
       fastify.log.error(error);
       const isUniqueViolation = 
         error?.code === '23505' || 
@@ -239,6 +248,15 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
         error?.cause?.message?.includes('duplicate key');
 
       if (isUniqueViolation) {
+        const isKkUnique =
+          error?.constraint === "kartu_keluarga_no_kk_hash_unique" ||
+          error?.cause?.constraint === "kartu_keluarga_no_kk_hash_unique" ||
+          error?.detail?.includes("no_kk_hash") ||
+          error?.cause?.detail?.includes("no_kk_hash");
+
+        if (isKkUnique) {
+          return reply.status(400).send({ success: false, message: "Nomor KK sudah terdaftar." });
+        }
         return reply.status(400).send({ success: false, message: "NIK sudah terdaftar." });
       }
       return reply.status(500).send({ success: false, message: "Gagal menyimpan data." });
@@ -248,28 +266,147 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
   fastify.put<{ Params: ParamsWithId; Body: Partial<PendudukInsert> }>("/api/penduduk/:id", async (request, reply) => {
     try {
       const { id } = request.params;
-      const body = request.body;
+      const body = { ...request.body };
 
       if (body.nik) body.nikHash = hashKependudukan(body.nik);
-      if (body.noKk) body.noKkHash = hashKependudukan(body.noKk);
 
-      const updatedData = await db
-        .update(pendudukTable)
-        .set(body)
-        .where(eq(pendudukTable.id, id))
-        .returning();
+      const updated = await db.transaction(async (tx) => {
+        const existingList = await tx
+          .select()
+          .from(pendudukTable)
+          .where(eq(pendudukTable.id, id));
 
-      const updated = updatedData[0];
-      if (!updated) {
-        return reply.status(404).send({ success: false, message: "Data penduduk tidak ditemukan." });
-      }
+        const currentRecord = existingList[0];
+        if (!currentRecord) {
+          throw { statusCode: 404, message: "Data penduduk tidak ditemukan." };
+        }
 
-      if (updated.kartuKeluargaId && body.shdk && body.shdk.toUpperCase() === "KEPALA KELUARGA") {
-        await db
-          .update(kartuKeluargaTable)
-          .set({ kepalaKeluargaId: updated.id })
-          .where(eq(kartuKeluargaTable.id, updated.kartuKeluargaId));
-      }
+        if (body.noKk !== undefined) {
+          if (body.noKk === "-") {
+            body.noKkHash = hashKependudukan("-");
+            body.kartuKeluargaId = null;
+
+            if (currentRecord.kartuKeluargaId) {
+              await tx
+                .update(kartuKeluargaTable)
+                .set({ kepalaKeluargaId: null })
+                .where(
+                  and(
+                    eq(kartuKeluargaTable.id, currentRecord.kartuKeluargaId),
+                    eq(kartuKeluargaTable.kepalaKeluargaId, id)
+                  )
+                );
+            }
+          } else {
+            const newNoKkHash = hashKependudukan(body.noKk);
+            body.noKkHash = newNoKkHash;
+
+            const existingKk = await tx
+              .select()
+              .from(kartuKeluargaTable)
+              .where(eq(kartuKeluargaTable.noKkHash, newNoKkHash));
+
+            if (existingKk[0]) {
+              body.kartuKeluargaId = existingKk[0].id;
+            } else {
+              const [newKk] = await tx
+                .insert(kartuKeluargaTable)
+                .values({
+                  noKk: body.noKk,
+                  noKkHash: newNoKkHash,
+                  alamat: body.alamat || currentRecord.alamat,
+                  rt: body.rt || currentRecord.rt,
+                  rw: body.rw || currentRecord.rw,
+                  dusun: "Dusun Krajan",
+                  kodePos: "65171",
+                })
+                .returning();
+
+              if (newKk) {
+                body.kartuKeluargaId = newKk.id;
+              }
+            }
+
+            if (
+              currentRecord.kartuKeluargaId &&
+              body.kartuKeluargaId &&
+              currentRecord.kartuKeluargaId !== body.kartuKeluargaId
+            ) {
+              await tx
+                .update(kartuKeluargaTable)
+                .set({ kepalaKeluargaId: null })
+                .where(
+                  and(
+                    eq(kartuKeluargaTable.id, currentRecord.kartuKeluargaId),
+                    eq(kartuKeluargaTable.kepalaKeluargaId, id)
+                  )
+                );
+            }
+          }
+        } else if (body.kartuKeluargaId !== undefined) {
+          if (body.kartuKeluargaId === null) {
+            body.noKk = "-";
+            body.noKkHash = hashKependudukan("-");
+
+            if (currentRecord.kartuKeluargaId) {
+              await tx
+                .update(kartuKeluargaTable)
+                .set({ kepalaKeluargaId: null })
+                .where(
+                  and(
+                    eq(kartuKeluargaTable.id, currentRecord.kartuKeluargaId),
+                    eq(kartuKeluargaTable.kepalaKeluargaId, id)
+                  )
+                );
+            }
+          } else {
+            const targetKk = await tx
+              .select()
+              .from(kartuKeluargaTable)
+              .where(eq(kartuKeluargaTable.id, body.kartuKeluargaId));
+
+            if (targetKk[0]) {
+              body.noKk = targetKk[0].noKk;
+              body.noKkHash = targetKk[0].noKkHash;
+            }
+          }
+        }
+
+        const updatedData = await tx
+          .update(pendudukTable)
+          .set(body)
+          .where(eq(pendudukTable.id, id))
+          .returning();
+
+        const updatedRecord = updatedData[0];
+        if (!updatedRecord) {
+          throw { statusCode: 500, message: "Gagal memperbarui data penduduk." };
+        }
+
+        if (updatedRecord.kartuKeluargaId && body.shdk) {
+          if (body.shdk.toUpperCase() === "KEPALA KELUARGA") {
+            await tx
+              .update(kartuKeluargaTable)
+              .set({ kepalaKeluargaId: updatedRecord.id })
+              .where(eq(kartuKeluargaTable.id, updatedRecord.kartuKeluargaId));
+          } else if (
+            currentRecord.kartuKeluargaId === updatedRecord.kartuKeluargaId &&
+            currentRecord.shdk.toUpperCase() === "KEPALA KELUARGA"
+          ) {
+            await tx
+              .update(kartuKeluargaTable)
+              .set({ kepalaKeluargaId: null })
+              .where(
+                and(
+                  eq(kartuKeluargaTable.id, updatedRecord.kartuKeluargaId),
+                  eq(kartuKeluargaTable.kepalaKeluargaId, id)
+                )
+              );
+          }
+        }
+
+        return updatedRecord;
+      });
 
       return reply.send({ 
         success: true, 
@@ -277,6 +414,10 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
         data: withFotoUrl(updated) 
       });
     } catch (error: any) {
+      if (error?.statusCode && error?.message) {
+        return reply.status(error.statusCode).send({ success: false, message: error.message });
+      }
+
       fastify.log.error(error);
       const isUniqueViolation = 
         error?.code === '23505' || 
