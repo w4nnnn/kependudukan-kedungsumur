@@ -3,9 +3,18 @@ export function parseExcelDate(val: unknown): string | null {
 
   if (val instanceof Date) {
     if (isNaN(val.getTime())) return null;
-    const year = val.getFullYear();
-    const month = String(val.getMonth() + 1).padStart(2, "0");
-    const day = String(val.getDate()).padStart(2, "0");
+    let year: number;
+    let month: string;
+    let day: string;
+    if (val.getUTCHours() === 0 && val.getUTCMinutes() === 0 && val.getUTCSeconds() === 0) {
+      year = val.getUTCFullYear();
+      month = String(val.getUTCMonth() + 1).padStart(2, "0");
+      day = String(val.getUTCDate()).padStart(2, "0");
+    } else {
+      year = val.getFullYear();
+      month = String(val.getMonth() + 1).padStart(2, "0");
+      day = String(val.getDate()).padStart(2, "0");
+    }
     return `${year}-${month}-${day}`;
   }
 
