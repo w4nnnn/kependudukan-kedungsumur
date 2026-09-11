@@ -5,23 +5,36 @@ import { requireAuth } from "../middlewares/auth.middleware.js";
 
 export default async function authRoutes(fastify: FastifyInstance) {
   fastify.route({
-    method: ["GET", "POST"],
+    method: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     url: "/api/auth/*",
     async handler(request, reply) {
       try {
         const url = new URL(request.url, `http://${request.headers.host}`);
         const headers = fromNodeHeaders(request.headers);
+        const hasBody = request.body && request.method !== "GET" && request.method !== "HEAD";
 
         const req = new Request(url.toString(), {
           method: request.method,
           headers,
-          ...(request.body ? { body: JSON.stringify(request.body) } : {}),
+          ...(hasBody ? { body: JSON.stringify(request.body) } : {}),
         });
 
         const response = await auth.handler(req);
 
         reply.status(response.status);
-        response.headers.forEach((value, key) => reply.header(key, value));
+
+        if (typeof (response.headers as any).getSetCookie === "function") {
+          const cookies: string[] = (response.headers as any).getSetCookie();
+          cookies.forEach((cookieStr) => {
+            reply.header("set-cookie", cookieStr);
+          });
+        }
+
+        response.headers.forEach((value, key) => {
+          if (key.toLowerCase() !== "set-cookie") {
+            reply.header(key, value);
+          }
+        });
         
         if (response.body) {
           return reply.send(await response.text());

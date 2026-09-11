@@ -113,6 +113,85 @@ export async function runAuthTests(client: TestClient, runner: TestRunner) {
     assertEqual(getUserRes.body.id, adminUserId, "user.id cocok");
   });
 
+  await runner.step("POST /api/auth/admin/create-user & Otorisasi RBAC (Staf Role 'user' Ditolak Akses Rute Admin)", async () => {
+    const regularUsername = `staf_${Date.now()}`;
+    const regularPassword = "password_staf_123";
+    const createRes = await client.request("/api/auth/admin/create-user", {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        name: "Staf Operator Testing",
+        email: `${regularUsername}@desa.test`,
+        password: regularPassword,
+        role: "user",
+        data: {
+          username: regularUsername,
+        },
+      }),
+    });
+
+    assertEqual(createRes.status, 200, "Create regular user status");
+    const regularUserId = createRes.body?.user?.id || createRes.body?.id;
+    assert(Boolean(regularUserId), "Regular user ID harus ada");
+
+    const regularClient = new TestClient();
+    const loginRes = await regularClient.request("/api/auth/sign-in/username", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Origin": config.baseUrl,
+      },
+      body: JSON.stringify({
+        username: regularUsername,
+        password: regularPassword,
+      }),
+    });
+    assertEqual(loginRes.status, 200, "Login regular user status");
+    regularClient.sessionToken = loginRes.body.token;
+    const cookie = loginRes.headers.get("set-cookie");
+    if (cookie) regularClient.sessionCookie = cookie;
+
+    const meRes = await regularClient.request("/api/me", {
+      headers: regularClient.getAuthHeaders(),
+    });
+    assertEqual(meRes.status, 200, "Staf bisa akses /api/me");
+
+    const exportRes = await regularClient.request("/api/penduduk/export", {
+      headers: regularClient.getAuthHeaders(),
+    });
+    assertEqual(exportRes.status, 403, "Staf non-admin dilarang export penduduk (Expect 403)");
+
+    const deleteRes = await regularClient.request("/api/penduduk/00000000-0000-0000-0000-000000000000", {
+      method: "DELETE",
+      headers: regularClient.getAuthHeaders(false),
+    });
+    assertEqual(deleteRes.status, 403, "Staf non-admin dilarang delete penduduk (Expect 403)");
+
+    const banRes = await client.request("/api/auth/admin/ban-user", {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        userId: regularUserId,
+        banReason: "Pelanggaran SOP",
+      }),
+    });
+    assertEqual(banRes.status, 200, "Admin ban user status");
+
+    const bannedCheckRes = await regularClient.request("/api/me", {
+      headers: regularClient.getAuthHeaders(),
+    });
+    assert(
+      bannedCheckRes.status === 401 || bannedCheckRes.status === 403,
+      `Akun diblokir harus ditolak (401 session revoked atau 403 forbidden), diterima: ${bannedCheckRes.status}`
+    );
+
+    await client.request("/api/auth/admin/remove-user", {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({ userId: regularUserId }),
+    });
+  });
+
   await runner.step("GET /api/me (Validasi Response Rute Terproteksi)", async () => {
     const res = await client.request("/api/me", {
       headers: client.getAuthHeaders(),
