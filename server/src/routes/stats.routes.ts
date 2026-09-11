@@ -75,7 +75,7 @@ export default async function statsRoutes(fastify: FastifyInstance) {
 
         db
           .select({
-            balita: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) <= 5 then 1 end) as integer)`,
+            balita: sql<number>`cast(count(case when ${pendudukTable.tanggalLahir} <= CURRENT_DATE and EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 0 and 5 then 1 end) as integer)`,
             anak: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 6 and 12 then 1 end) as integer)`,
             remaja: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 13 and 17 then 1 end) as integer)`,
             produktif: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 18 and 59 then 1 end) as integer)`,
@@ -242,7 +242,7 @@ export default async function statsRoutes(fastify: FastifyInstance) {
 
         db
           .select({
-            balita: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) <= 5 then 1 end) as integer)`,
+            balita: sql<number>`cast(count(case when ${pendudukTable.tanggalLahir} <= CURRENT_DATE and EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 0 and 5 then 1 end) as integer)`,
             anak: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 6 and 12 then 1 end) as integer)`,
             remaja: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 13 and 17 then 1 end) as integer)`,
             produktif: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 18 and 59 then 1 end) as integer)`,
@@ -411,6 +411,10 @@ export default async function statsRoutes(fastify: FastifyInstance) {
       doc.font("Helvetica").fontSize(8).fillColor("#000000");
 
       distribusiRtRes.forEach((rtItem, idx) => {
+        if (rtRowY + 16 > 760) {
+          doc.addPage();
+          rtRowY = 50;
+        }
         const bg = idx % 2 === 0 ? "#FAFAFA" : "#FFFFFF";
         doc.rect(45, rtRowY, 505, 16).fillAndStroke(bg, "#E5E5E5");
         doc.fillColor("#000000");
@@ -421,7 +425,11 @@ export default async function statsRoutes(fastify: FastifyInstance) {
         rtRowY += 16;
       });
 
-      const section4TitleY = rtRowY + 16;
+      let section4TitleY = rtRowY + 16;
+      if (section4TitleY + 34 + (pekerjaanRes.length * 16) > 760 && section4TitleY > 500) {
+        doc.addPage();
+        section4TitleY = 50;
+      }
       doc.fontSize(10).font("Helvetica-Bold").text("IV. MATA PENCAHARIAN / PEKERJAAN UTAMA WARGA", 45, section4TitleY);
 
       const tableTop4 = section4TitleY + 16;
@@ -436,6 +444,10 @@ export default async function statsRoutes(fastify: FastifyInstance) {
       doc.font("Helvetica").fontSize(8).fillColor("#000000");
 
       pekerjaanRes.forEach((job, idx) => {
+        if (jobRowY + 16 > 760) {
+          doc.addPage();
+          jobRowY = 50;
+        }
         const bg = idx % 2 === 0 ? "#FAFAFA" : "#FFFFFF";
         const percent = totalPenduduk > 0 ? ((job.count / totalPenduduk) * 100).toFixed(1) : "0";
         doc.rect(45, jobRowY, 505, 16).fillAndStroke(bg, "#E5E5E5");
@@ -447,7 +459,11 @@ export default async function statsRoutes(fastify: FastifyInstance) {
         jobRowY += 16;
       });
 
-      const signY = jobRowY + 24;
+      let signY = jobRowY + 24;
+      if (signY + 70 > 760) {
+        doc.addPage();
+        signY = 50;
+      }
 
       doc
         .fontSize(9)
