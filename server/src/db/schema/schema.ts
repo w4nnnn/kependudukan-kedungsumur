@@ -6,31 +6,33 @@ const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET_KEY || "rahasia_negara_d
 const aesKey = createHash("sha256").update(ENCRYPTION_SECRET).digest();
 
 export function encryptAesGcm(text: string): string {
-  if (typeof text !== "string") return text as any;
+  if (typeof text !== "string" || !text) return text as any;
   try {
     const iv = randomBytes(12);
     const cipher = createCipheriv("aes-256-gcm", aesKey, iv);
     const encrypted = Buffer.concat([cipher.update(text, "utf8"), cipher.final()]);
     const tag = cipher.getAuthTag();
     return Buffer.concat([iv, tag, encrypted]).toString("base64");
-  } catch {
-    return text;
+  } catch (error: any) {
+    throw new Error(`Gagal mengenkripsi data: ${error?.message || "ENCRYPTION_FAILED"}`);
   }
 }
 
 export function decryptAesGcm(cipherText: string): string {
   if (typeof cipherText !== "string" || !cipherText) return cipherText;
+  const buf = Buffer.from(cipherText, "base64");
+  if (buf.length < 28) return cipherText;
   try {
-    const buf = Buffer.from(cipherText, "base64");
-    if (buf.length < 28) return cipherText;
     const iv = buf.subarray(0, 12);
     const tag = buf.subarray(12, 28);
     const encrypted = buf.subarray(28);
     const decipher = createDecipheriv("aes-256-gcm", aesKey, iv);
     decipher.setAuthTag(tag);
     return decipher.update(encrypted, undefined, "utf8") + decipher.final("utf8");
-  } catch {
-    return cipherText;
+  } catch (error: any) {
+    throw new Error(
+      `Gagal mendekripsi data: ciphertext rusak atau kunci enkripsi tidak cocok (${error?.message || "DECRYPTION_FAILED"})`
+    );
   }
 }
 
