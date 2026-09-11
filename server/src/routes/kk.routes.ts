@@ -31,10 +31,11 @@ export default async function kkRoutes(fastify: FastifyInstance) {
 
       if (nokk) {
         const trimmedNokk = String(nokk).trim();
+        const nokkHash = hashKependudukan(trimmedNokk);
         conditions.push(
           or(
-            eq(kartuKeluargaTable.noKkHash, hashKependudukan(trimmedNokk)),
-            eq(pendudukTable.nikHash, hashKependudukan(trimmedNokk))
+            eq(kartuKeluargaTable.noKkHash, nokkHash),
+            sql`exists (select 1 from ${pendudukTable} where ${pendudukTable.kartuKeluargaId} = ${kartuKeluargaTable.id} and ${pendudukTable.nikHash} = ${nokkHash})`
           )
         );
       }
@@ -42,15 +43,21 @@ export default async function kkRoutes(fastify: FastifyInstance) {
       if (search) {
         const trimmed = String(search).trim();
         if (/^\d{16}$/.test(trimmed)) {
+          const searchHash = hashKependudukan(trimmed);
           conditions.push(
             or(
-              eq(kartuKeluargaTable.noKkHash, hashKependudukan(trimmed)),
-              eq(pendudukTable.nikHash, hashKependudukan(trimmed)),
+              eq(kartuKeluargaTable.noKkHash, searchHash),
+              sql`exists (select 1 from ${pendudukTable} where ${pendudukTable.kartuKeluargaId} = ${kartuKeluargaTable.id} and ${pendudukTable.nikHash} = ${searchHash})`,
               ilike(pendudukTable.namaLengkap, `%${trimmed}%`)
             )
           );
         } else {
-          conditions.push(ilike(pendudukTable.namaLengkap, `%${trimmed}%`));
+          conditions.push(
+            or(
+              ilike(pendudukTable.namaLengkap, `%${trimmed}%`),
+              sql`exists (select 1 from ${pendudukTable} where ${pendudukTable.kartuKeluargaId} = ${kartuKeluargaTable.id} and ${pendudukTable.namaLengkap} ilike ${`%${trimmed}%`})`
+            )
+          );
         }
       }
 
@@ -104,7 +111,7 @@ export default async function kkRoutes(fastify: FastifyInstance) {
       const [kkList, totalCount] = await Promise.all([
         query
           .orderBy(desc(kartuKeluargaTable.createdAt))
-          .limit(Number(limit))
+          .limit(safeLimit)
           .offset(offset),
         countQuery,
       ]);
@@ -176,6 +183,14 @@ export default async function kkRoutes(fastify: FastifyInstance) {
       const record = kkData[0];
       if (!record) {
         return reply.status(404).send({ success: false, message: "Data Kartu Keluarga tidak ditemukan." });
+      }
+
+      const currentUser = (request as any).user;
+      if (currentUser?.role !== "admin" && currentUser?.rt && record.rt !== currentUser.rt) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RT ${currentUser.rt}.` });
+      }
+      if (currentUser?.role !== "admin" && currentUser?.rw && record.rw !== currentUser.rw) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RW ${currentUser.rw}.` });
       }
 
       const anggota = await db
@@ -252,6 +267,10 @@ export default async function kkRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ success: false, message: "Nomor KK harus 16 digit angka." });
       }
 
+      if (!body.alamat || !body.rt || !body.rw) {
+        return reply.status(400).send({ success: false, message: "Alamat, RT, dan RW Kartu Keluarga wajib diisi." });
+      }
+
       const currentUser = (request as any).user;
       if (currentUser?.role !== "admin" && currentUser?.rt && body.rt !== currentUser.rt) {
         return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RT ${currentUser.rt}.` });
@@ -288,6 +307,15 @@ export default async function kkRoutes(fastify: FastifyInstance) {
         let kepalaId: string | null = null;
 
         if (modeKepala === "select" && selectedPendudukId) {
+          const [targetPenduduk] = await tx
+            .select()
+            .from(pendudukTable)
+            .where(eq(pendudukTable.id, selectedPendudukId));
+
+          if (!targetPenduduk) {
+            throw { statusCode: 400, message: "Penduduk yang dipilih sebagai Kepala Keluarga tidak ditemukan." };
+          }
+
           kepalaId = selectedPendudukId;
 
           await tx
@@ -512,6 +540,14 @@ export default async function kkRoutes(fastify: FastifyInstance) {
           throw { statusCode: 404, message: "Data Kartu Keluarga tidak ditemukan." };
         }
 
+        const currentUser = (request as any).user;
+        if (currentUser?.role !== "admin" && currentUser?.rt && targetKk.rt !== currentUser.rt) {
+          throw { statusCode: 403, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RT ${currentUser.rt}.` };
+        }
+        if (currentUser?.role !== "admin" && currentUser?.rw && targetKk.rw !== currentUser.rw) {
+          throw { statusCode: 403, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RW ${currentUser.rw}.` };
+        }
+
         if (mode === "create" || (!pendudukId && penduduk)) {
           if (!penduduk) {
             throw { statusCode: 400, message: "Data penduduk baru wajib disertakan." };
@@ -671,6 +707,14 @@ export default async function kkRoutes(fastify: FastifyInstance) {
       const targetKk = kk[0];
       if (!targetKk) {
         return reply.status(404).send({ success: false, message: "Data Kartu Keluarga tidak ditemukan." });
+      }
+
+      const currentUser = (request as any).user;
+      if (currentUser?.role !== "admin" && currentUser?.rt && targetKk.rt !== currentUser.rt) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RT ${currentUser.rt}.` });
+      }
+      if (currentUser?.role !== "admin" && currentUser?.rw && targetKk.rw !== currentUser.rw) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RW ${currentUser.rw}.` });
       }
 
       await db.transaction(async (tx) => {

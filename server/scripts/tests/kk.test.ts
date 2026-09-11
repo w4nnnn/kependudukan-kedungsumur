@@ -163,6 +163,25 @@ export async function runKKTests(client: TestClient, runner: TestRunner) {
     assertEqual(residentRes.body.data.shdk, "KEPALA KELUARGA", "shdk penduduk sinkron");
   });
 
+  await runner.step("POST /api/kk (Tambah KK Mode 'select' dengan Penduduk Tidak Ditemukan -> Expect 400)", async () => {
+    const res = await client.request("/api/kk", {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        noKk: generate16Digits("3573"),
+        alamat: "Jl. Mawar RT 001 RW 002",
+        rt: "001",
+        rw: "002",
+        modeKepala: "select",
+        selectedPendudukId: "00000000-0000-0000-0000-000000000000",
+      }),
+    });
+
+    assertEqual(res.status, 400, "HTTP Status Expect 400");
+    assertEqual(res.body.success, false, "response.success false");
+    assertEqual(res.body.message, "Penduduk yang dipilih sebagai Kepala Keluarga tidak ditemukan.", "Pesan error penduduk tidak ditemukan");
+  });
+
   await runner.step("POST /api/penduduk (Tambah Penduduk sebagai Kepala Keluarga)", async () => {
     const res = await client.request("/api/penduduk", {
       method: "POST",
@@ -279,6 +298,32 @@ export async function runKKTests(client: TestClient, runner: TestRunner) {
     assertEqual(res.body.data[0].id, createdKkId, "ID KK cocok");
   });
 
+  await runner.step("GET /api/kk?search=... (Pencarian NIK Anggota Non-Kepala)", async () => {
+    const res = await client.request(`/api/kk?search=${testNikAnggota}`, {
+      headers: client.getAuthHeaders(false),
+    });
+
+    assertEqual(res.status, 200, "HTTP Status");
+    assertEqual(res.body.success, true, "response.success");
+    assert(res.body.data.length >= 1, "Menemukan KK berdasarkan NIK anggota non-kepala");
+    assertEqual(res.body.data[0].id, createdKkId, "ID KK cocok dengan anggota");
+  });
+
+  await runner.step("GET /api/kk?limit=abc & limit=999999 (Validasi Paginasi Aman Tanpa Crash)", async () => {
+    const resInvalid = await client.request("/api/kk?limit=abc", {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(resInvalid.status, 200, "Limit invalid tidak menyebabkan crash");
+    assertEqual(resInvalid.body.meta.limit, 10, "Fallback safeLimit 10");
+
+    const resLarge = await client.request("/api/kk?limit=999999", {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(resLarge.status, 200, "Limit besar status 200");
+    assertEqual(resLarge.body.meta.limit, 100, "Limit besar di-cap di 100");
+    assert(resLarge.body.data.length <= 100, "Jumlah data tidak melebihi 100");
+  });
+
   await runner.step("PUT /api/kk/:id (Update Alamat KK & Sinkronisasi ke Anggota)", async () => {
     const updatePayload = {
       alamat: "Jl. Diponegoro No. 99 Barokah",
@@ -302,6 +347,29 @@ export async function runKKTests(client: TestClient, runner: TestRunner) {
     });
     assertEqual(checkPenduduk.body.data.alamat, updatePayload.alamat, "alamat anggota tersinkron");
     assertEqual(checkPenduduk.body.data.rt, updatePayload.rt, "rt anggota tersinkron");
+  });
+
+  await runner.step("PUT /api/penduduk/:id (Update Alamat Kepala Keluarga Sinkron ke Kartu Keluarga)", async () => {
+    const newAddressPayload = {
+      alamat: "Jl. Raya Kedungsumur No. 77 Sejahtera",
+      rt: "005",
+      rw: "003",
+    };
+
+    const res = await client.request(`/api/penduduk/${createdKepalaId}`, {
+      method: "PUT",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify(newAddressPayload),
+    });
+
+    assertEqual(res.status, 200, "Update penduduk status");
+    assertEqual(res.body.data.alamat, newAddressPayload.alamat, "alamat penduduk terupdate");
+
+    const checkKk = await client.request(`/api/kk/${createdKkId}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(checkKk.body.data.alamat, newAddressPayload.alamat, "alamat KK tersinkron dari kepala");
+    assertEqual(checkKk.body.data.rt, newAddressPayload.rt, "rt KK tersinkron dari kepala");
   });
 
   await runner.step("PUT /api/kk/:id (Validasi No KK Tidak 16 Digit -> Expect 400)", async () => {
