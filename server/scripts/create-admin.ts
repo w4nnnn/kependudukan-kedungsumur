@@ -21,18 +21,21 @@ async function seedSuperAdmin() {
   console.log(`Mulai membuat Super Admin dengan username: ${username}...`);
 
   try {
-    const newUser = await auth.api.signUpEmail({
+    const newUser = await auth.api.createUser({
       body: {
         email: `${username}@kedungsumur.desa.id`,
         password: password,
         name: name,
-        username: username,
+        role: "admin",
+        data: {
+          username: username,
+        },
       }
     });
 
     if (newUser?.user) {
       await db.update(user).set({ role: "admin" }).where(eq(user.id, newUser.user.id));
-      console.log("✅ Berhasil membuat Super Admin:", newUser.user.username);
+      console.log("✅ Berhasil membuat Super Admin:", (newUser.user as any).username || username);
     }
   } catch (error: any) {
     if (error?.message?.includes("already exists") || error?.body?.message?.includes("exists")) {

@@ -9,7 +9,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
     url: "/api/auth/*",
     async handler(request, reply) {
       try {
-        const url = new URL(request.url, `http://${request.headers.host}`);
+        const protocol = request.protocol || (request.headers["x-forwarded-proto"] as string) || "http";
+        const host = (request.headers["x-forwarded-host"] as string) || request.headers.host || "localhost";
+        const url = new URL(request.url, `${protocol}://${host}`);
         const headers = fromNodeHeaders(request.headers);
         const hasBody = request.body && request.method !== "GET" && request.method !== "HEAD";
 

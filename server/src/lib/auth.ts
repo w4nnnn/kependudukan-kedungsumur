@@ -25,6 +25,7 @@ export const auth = betterAuth({
     },
     emailAndPassword: {
         enabled: true,
+        disableSignUp: true,
     },
     trustedOrigins: [
         process.env.FRONTEND_URL || "http://localhost:3000",
@@ -32,6 +33,9 @@ export const auth = betterAuth({
     ],
     plugins: [
         username(),
-        admin()
+        admin({
+            defaultRole: "user",
+            adminRole: "admin",
+        })
     ]
 });
