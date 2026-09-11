@@ -223,8 +223,27 @@ export async function runPendudukTests(client: TestClient, runner: TestRunner) {
     });
   });
 
+  await runner.step("POST /api/penduduk/:id/foto (Validasi Magic Bytes File Tidak Valid -> Expect 400)", async () => {
+    const invalidBuffer = Buffer.from("<svg onload='alert(1)'>not a real image</svg>");
+    const formData = new FormData();
+    formData.append("file", new Blob([invalidBuffer], { type: "image/png" }), "exploit.png");
+
+    const authHeaders = client.getAuthHeaders(false);
+    const res = await client.request(`/api/penduduk/${createdPendudukId}/foto`, {
+      method: "POST",
+      headers: authHeaders,
+      body: formData,
+    });
+
+    assertEqual(res.status, 400, "HTTP Status Upload File Palsu");
+    assertEqual(res.body.success, false, "upload invalid success");
+  });
+
   await runner.step("POST /api/penduduk/:id/foto (Upload Foto Penduduk)", async () => {
-    const fakeImageBuffer = Buffer.from("GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;");
+    const fakeImageBuffer = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      "base64"
+    );
     const formData = new FormData();
     formData.append("file", new Blob([fakeImageBuffer], { type: "image/png" }), "pasfoto.png");
 

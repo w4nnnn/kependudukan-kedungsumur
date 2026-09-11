@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/index.js";
 import { pendudukTable, kartuKeluargaTable, hashKependudukan } from "../db/schema/schema.js";
-import { eq, ilike, and, sql, desc } from "drizzle-orm";
+import { eq, ilike, and, sql, desc, asc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middlewares/auth.middleware.js";
 import { uploadFotoPenduduk, deleteFotoPenduduk, getPublicFotoUrl } from "../lib/minio.js";
 import path from "path";
@@ -24,7 +24,9 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
   fastify.get("/api/penduduk", async (request, reply) => {
     try {
       const { search, nik, nokk, kkId, rt, rw, limit = 100, page = 1 } = request.query as any;
-      const offset = (Number(page) - 1) * Number(limit);
+      const safePage = Math.max(1, parseInt(String(page), 10) || 1);
+      const safeLimit = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 10));
+      const offset = (safePage - 1) * safeLimit;
 
       let query = db.select().from(pendudukTable).$dynamic();
       let countQuery = db.select({ count: sql<number>`cast(count(${pendudukTable.id}) as integer)` }).from(pendudukTable).$dynamic();
@@ -32,15 +34,22 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
       const conditions = [];
 
       if (search) {
-        conditions.push(ilike(pendudukTable.namaLengkap, `%${search}%`));
+        const trimmed = String(search).trim();
+        if (/^\d{16}$/.test(trimmed)) {
+          conditions.push(eq(pendudukTable.nikHash, hashKependudukan(trimmed)));
+        } else {
+          conditions.push(ilike(pendudukTable.namaLengkap, `%${trimmed}%`));
+        }
       }
       
       if (nik) {
-        conditions.push(eq(pendudukTable.nikHash, hashKependudukan(nik)));
+        const trimmedNik = String(nik).trim();
+        conditions.push(eq(pendudukTable.nikHash, hashKependudukan(trimmedNik)));
       }
 
       if (nokk) {
-        conditions.push(eq(pendudukTable.noKkHash, hashKependudukan(nokk)));
+        const trimmedNokk = String(nokk).trim();
+        conditions.push(eq(pendudukTable.noKkHash, hashKependudukan(trimmedNokk)));
       }
 
       if (kkId) {
@@ -62,20 +71,20 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
       }
 
       const [data, totalCount] = await Promise.all([
-        query.orderBy(desc(pendudukTable.createdAt)).limit(Number(limit)).offset(offset),
+        query.orderBy(desc(pendudukTable.createdAt)).limit(safeLimit).offset(offset),
         countQuery
       ]);
 
       const total = totalCount[0]?.count ?? 0;
-      const totalPages = Math.ceil(total / Number(limit));
+      const totalPages = Math.max(1, Math.ceil(total / safeLimit));
 
       return reply.send({ 
         success: true, 
         data: data.map(withFotoUrl),
         meta: {
           total,
-          page: Number(page),
-          limit: Number(limit),
+          page: safePage,
+          limit: safeLimit,
           totalPages
         }
       });
@@ -117,7 +126,10 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
             })
             .from(pendudukTable)
             .where(eq(pendudukTable.kartuKeluargaId, record.kartuKeluargaId))
-            .orderBy(pendudukTable.urutanKk);
+            .orderBy(
+              asc(sql`cast(coalesce(nullif(${pendudukTable.urutanKk}, ''), '999') as integer)`),
+              asc(pendudukTable.createdAt)
+            );
 
           kartuKeluarga = kkData[0];
           anggotaKeluarga = anggota.map(withFotoUrl);
@@ -154,7 +166,15 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
     try {
       const { createKk, ...body } = request.body as any;
 
-      if (createKk && (!createKk.noKk || createKk.noKk.length !== 16)) {
+      if (!body.nik || !/^\d{16}$/.test(body.nik)) {
+        return reply.status(400).send({ success: false, message: "NIK harus 16 digit angka." });
+      }
+
+      if (body.noKk && body.noKk !== "-" && !/^\d{16}$/.test(body.noKk)) {
+        return reply.status(400).send({ success: false, message: "Nomor KK harus 16 digit angka atau '-'." });
+      }
+
+      if (createKk && (!createKk.noKk || !/^\d{16}$/.test(createKk.noKk))) {
         return reply.status(400).send({ success: false, message: "Nomor KK harus 16 digit." });
       }
 
@@ -222,6 +242,17 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
 
         if (kartuKeluargaId && body.shdk && body.shdk.toUpperCase() === "KEPALA KELUARGA") {
           await tx
+            .update(pendudukTable)
+            .set({ shdk: "ANGGOTA KELUARGA" })
+            .where(
+              and(
+                eq(pendudukTable.kartuKeluargaId, kartuKeluargaId),
+                eq(pendudukTable.shdk, "KEPALA KELUARGA"),
+                sql`${pendudukTable.id} != ${createdRecord.id}`
+              )
+            );
+
+          await tx
             .update(kartuKeluargaTable)
             .set({ kepalaKeluargaId: createdRecord.id })
             .where(eq(kartuKeluargaTable.id, kartuKeluargaId));
@@ -267,6 +298,14 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params;
       const body = { ...request.body };
+
+      if (body.nik !== undefined && !/^\d{16}$/.test(body.nik)) {
+        return reply.status(400).send({ success: false, message: "NIK harus 16 digit angka." });
+      }
+
+      if (body.noKk !== undefined && body.noKk !== "-" && !/^\d{16}$/.test(body.noKk)) {
+        return reply.status(400).send({ success: false, message: "Nomor KK harus 16 digit angka atau '-'." });
+      }
 
       if (body.nik) body.nikHash = hashKependudukan(body.nik);
 
@@ -369,6 +408,21 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
               body.noKk = targetKk[0].noKk;
               body.noKkHash = targetKk[0].noKkHash;
             }
+
+            if (
+              currentRecord.kartuKeluargaId &&
+              currentRecord.kartuKeluargaId !== body.kartuKeluargaId
+            ) {
+              await tx
+                .update(kartuKeluargaTable)
+                .set({ kepalaKeluargaId: null })
+                .where(
+                  and(
+                    eq(kartuKeluargaTable.id, currentRecord.kartuKeluargaId),
+                    eq(kartuKeluargaTable.kepalaKeluargaId, id)
+                  )
+                );
+            }
           }
         }
 
@@ -385,6 +439,17 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
 
         if (updatedRecord.kartuKeluargaId && body.shdk) {
           if (body.shdk.toUpperCase() === "KEPALA KELUARGA") {
+            await tx
+              .update(pendudukTable)
+              .set({ shdk: "ANGGOTA KELUARGA" })
+              .where(
+                and(
+                  eq(pendudukTable.kartuKeluargaId, updatedRecord.kartuKeluargaId),
+                  eq(pendudukTable.shdk, "KEPALA KELUARGA"),
+                  sql`${pendudukTable.id} != ${updatedRecord.id}`
+                )
+              );
+
             await tx
               .update(kartuKeluargaTable)
               .set({ kepalaKeluargaId: updatedRecord.id })
@@ -447,8 +512,17 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ success: false, message: "File foto wajib diunggah." });
       }
 
-      const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
-      if (!allowedMimeTypes.includes(file.mimetype)) {
+      const allowedMimeExtMap: Record<string, string> = {
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+      };
+
+      const normalizedMime = (file.mimetype || "").toLowerCase();
+      const ext = allowedMimeExtMap[normalizedMime];
+
+      if (!ext) {
         return reply.status(400).send({
           success: false,
           message: "Format file tidak didukung. Harap unggah gambar JPG, PNG, atau WebP.",
@@ -456,7 +530,26 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
       }
 
       const buffer = await file.toBuffer();
-      const ext = path.extname(file.filename) || (file.mimetype === "image/png" ? ".png" : file.mimetype === "image/webp" ? ".webp" : ".jpg");
+
+      if (buffer.length < 8) {
+        return reply.status(400).send({
+          success: false,
+          message: "Ukuran file terlalu kecil atau file gambar rusak.",
+        });
+      }
+
+      const isJpeg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+      const isPng = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+      const isWebp =
+        buffer.subarray(0, 4).toString("latin1") === "RIFF" &&
+        buffer.subarray(8, 12).toString("latin1") === "WEBP";
+
+      if (!isJpeg && !isPng && !isWebp) {
+        return reply.status(400).send({
+          success: false,
+          message: "Konten file tidak sesuai dengan format gambar JPG, PNG, atau WebP yang valid.",
+        });
+      }
 
       if (current.foto) {
         await deleteFotoPenduduk(current.foto);
