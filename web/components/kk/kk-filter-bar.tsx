@@ -9,6 +9,7 @@ interface KkFilterBarProps {
   selectedRt: string
   selectedRw: string
   searchQuery: string
+  isAdmin?: boolean
   onRtChange: (rt: string) => void
   onRwChange: (rw: string) => void
   onSearchChange: (search: string) => void
@@ -20,6 +21,7 @@ export function KkFilterBar({
   selectedRt,
   selectedRw,
   searchQuery,
+  isAdmin = false,
   onRtChange,
   onRwChange,
   onSearchChange,
@@ -72,15 +74,17 @@ export function KkFilterBar({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <Button
-          variant="outline"
-          onClick={onExport}
-          className="gap-2 font-medium shadow-xs"
-          title="Ekspor Rekap Kartu Keluarga ke Excel"
-        >
-          <Download className="h-4 w-4" />
-          <span>Ekspor</span>
-        </Button>
+        {isAdmin && (
+          <Button
+            variant="outline"
+            onClick={onExport}
+            className="gap-2 font-medium shadow-xs"
+            title="Ekspor Rekap Kartu Keluarga ke Excel"
+          >
+            <Download className="h-4 w-4" />
+            <span>Ekspor</span>
+          </Button>
+        )}
         <Button onClick={onAddKK} className="gap-2 font-medium shadow-sm">
           <Plus className="h-4 w-4" />
           Tambah KK

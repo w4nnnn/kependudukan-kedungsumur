@@ -35,6 +35,7 @@ interface KkTableProps {
   currentPage: number
   totalPages: number
   totalData: number
+  isAdmin?: boolean
   onPageChange: (page: number) => void
   onRowClick: (id: string) => void
   onEdit: (id: string) => void
@@ -47,6 +48,7 @@ export function KkTable({
   currentPage,
   totalPages,
   totalData,
+  isAdmin = false,
   onPageChange,
   onRowClick,
   onEdit,
@@ -146,13 +148,15 @@ export function KkTable({
                         <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(kk.id)}>
                           <Pencil className="mr-2 h-4 w-4" /> Edit KK
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="destructive"
-                          className="cursor-pointer"
-                          onClick={() => onDelete({ id: kk.id, noKk: kk.noKk })}
-                        >
-                          <Trash className="mr-2 h-4 w-4" /> Hapus KK
-                        </DropdownMenuItem>
+                        {isAdmin && (
+                          <DropdownMenuItem
+                            variant="destructive"
+                            className="cursor-pointer"
+                            onClick={() => onDelete({ id: kk.id, noKk: kk.noKk })}
+                          >
+                            <Trash className="mr-2 h-4 w-4" /> Hapus KK
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuGroup>
                     </DropdownMenuContent>
                   </DropdownMenu>

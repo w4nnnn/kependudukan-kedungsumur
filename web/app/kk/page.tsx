@@ -56,6 +56,8 @@ export default function KartuKeluargaPage() {
 
   if (!session) return null
 
+  const isAdmin = (session.user as any)?.role === "admin"
+
   return (
     <div className="flex w-full flex-col p-4 md:p-8">
       <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -78,6 +80,7 @@ export default function KartuKeluargaPage() {
               selectedRt={selectedRt}
               selectedRw={selectedRw}
               searchQuery={searchQuery}
+              isAdmin={isAdmin}
               onRtChange={(rt) => { setSelectedRt(rt); setCurrentPage(1); }}
               onRwChange={(rw) => { setSelectedRw(rw); setCurrentPage(1); }}
               onSearchChange={setSearchQuery}
@@ -93,6 +96,7 @@ export default function KartuKeluargaPage() {
               currentPage={currentPage}
               totalPages={totalPages}
               totalData={totalData}
+              isAdmin={isAdmin}
               onPageChange={setCurrentPage}
               onRowClick={(id) => router.push(`/kk/${id}`)}
               onEdit={(id) => router.push(`/kk/edit/${id}`)}
