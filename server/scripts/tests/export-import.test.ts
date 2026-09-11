@@ -250,6 +250,75 @@ export async function runExportImportTests(client: TestClient, runner: TestRunne
     assertEqual(detailRes.body.data.jumlahAnggota, 2, "Total anggota keluarga harus menjadi 2");
   });
 
+  const testNikDateObj = generate16Digits("3573");
+  const testNikDateStr = generate16Digits("3573");
+  const testKkDate = generate16Digits("3573");
+
+  await runner.step("POST /api/penduduk/import (Validasi Tanggal Lahir Presisi Tanpa Pergeseran -1 Hari & Format DD/MM/YYYY)", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Sheet1");
+    worksheet.columns = [
+      { header: "NIK", key: "nik" },
+      { header: "No KK", key: "noKk" },
+      { header: "Nama Lengkap", key: "namaLengkap" },
+      { header: "Jenis Kelamin", key: "jenisKelamin" },
+      { header: "Tempat Lahir", key: "tempatLahir" },
+      { header: "Tanggal Lahir", key: "tanggalLahir" },
+      { header: "Alamat", key: "alamat" },
+      { header: "RT", key: "rt" },
+      { header: "RW", key: "rw" },
+      { header: "SHDK", key: "shdk" },
+    ];
+
+    worksheet.addRow({
+      nik: testNikDateObj,
+      noKk: testKkDate,
+      namaLengkap: "Warga Tanggal DateObj",
+      jenisKelamin: "Laki-laki",
+      tempatLahir: "Kedungsumur",
+      tanggalLahir: new Date(1995, 7, 17),
+      alamat: "Jl. Merdeka No. 17",
+      rt: "001",
+      rw: "001",
+      shdk: "KEPALA KELUARGA",
+    });
+
+    worksheet.addRow({
+      nik: testNikDateStr,
+      noKk: testKkDate,
+      namaLengkap: "Warga Tanggal String DMY",
+      jenisKelamin: "Perempuan",
+      tempatLahir: "Kedungsumur",
+      tanggalLahir: "17/08/1995",
+      alamat: "Jl. Merdeka No. 17",
+      rt: "001",
+      rw: "001",
+      shdk: "ISTRI",
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const formData = new FormData();
+    formData.append("file", new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "import_dates.xlsx");
+
+    const importRes = await client.request("/api/penduduk/import", {
+      method: "POST",
+      headers: client.getAuthHeaders(false),
+      body: formData,
+    });
+    assertEqual(importRes.status, 200, "HTTP Status Import Dates");
+    assertEqual(importRes.body.data.berhasil, 2, "2 baris berhasil diimport");
+
+    const getRes1 = await client.request(`/api/penduduk?nik=${testNikDateObj}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(getRes1.body?.data?.[0]?.tanggalLahir, "1995-08-17", "Tanggal lahir Date object tidak boleh bergeser ke 1995-08-16");
+
+    const getRes2 = await client.request(`/api/penduduk?nik=${testNikDateStr}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(getRes2.body?.data?.[0]?.tanggalLahir, "1995-08-17", "Tanggal lahir string 17/08/1995 harus dinormalisasi menjadi 1995-08-17");
+  });
+
   const cleanupNik = async (nik: string) => {
     const check = await client.request(`/api/penduduk?nik=${nik}`, {
       headers: client.getAuthHeaders(false),
@@ -279,7 +348,10 @@ export async function runExportImportTests(client: TestClient, runner: TestRunne
   await cleanupNik(duplicateNik);
   await cleanupNik(testNikKepalaAsli);
   await cleanupNik(testNikAnakImpor);
+  await cleanupNik(testNikDateObj);
+  await cleanupNik(testNikDateStr);
   await cleanupKk(testNoKk);
   await cleanupKk(testKkDup);
   await cleanupKk(testKkExistingNo);
+  await cleanupKk(testKkDate);
 }

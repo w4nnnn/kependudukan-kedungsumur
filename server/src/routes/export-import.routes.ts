@@ -3,7 +3,8 @@ import ExcelJS from "exceljs";
 import { db } from "../db/index.js";
 import { pendudukTable, kartuKeluargaTable, hashKependudukan } from "../db/schema/schema.js";
 import { eq, and, asc, sql, inArray, ilike } from "drizzle-orm";
-import { requireAuth } from "../middlewares/auth.middleware.js";
+import { requireAuth, requireAdmin } from "../middlewares/auth.middleware.js";
+import { parseExcelDate } from "../lib/date-utils.js";
 
 export default async function exportImportRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", requireAuth);
@@ -99,7 +100,7 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
   });
 
   // 2. GET /api/penduduk/export (Export Seluruh Data Penduduk ke Excel)
-  fastify.get("/api/penduduk/export", async (request, reply) => {
+  fastify.get("/api/penduduk/export", { preHandler: requireAdmin }, async (request, reply) => {
     try {
       const { rt, rw, search } = request.query as { rt?: string; rw?: string; search?: string };
 
@@ -188,7 +189,7 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
   });
 
   // 3. GET /api/kk/export (Export Data Rekap Kartu Keluarga ke Excel)
-  fastify.get("/api/kk/export", async (request, reply) => {
+  fastify.get("/api/kk/export", { preHandler: requireAdmin }, async (request, reply) => {
     try {
       const { rt, rw } = request.query as { rt?: string; rw?: string };
 
@@ -292,7 +293,7 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
   });
 
   // 4. POST /api/penduduk/import (Bulk Upload & Insert Data Penduduk dari Excel)
-  fastify.post("/api/penduduk/import", async (request, reply) => {
+  fastify.post("/api/penduduk/import", { preHandler: requireAdmin }, async (request, reply) => {
     try {
       const file = await request.file();
       if (!file) {
@@ -340,7 +341,10 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
         const colIdx = colMap[key] || fallbackColIndex;
         const cell = row.getCell(colIdx);
         if (!cell) return "";
-        return String(cell.text || "").trim();
+        if (typeof cell.value === "number") {
+          return String(BigInt(Math.floor(cell.value)));
+        }
+        return String(cell.text || cell.value || "").trim();
       };
 
       worksheet.eachRow((row, rowNumber) => {
@@ -353,13 +357,8 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
         const tempatLahir = getVal(row, "tempatLahir", 5);
 
         const tglColIdx = colMap.tanggalLahir || 6;
-        let rawTanggal = row.getCell(tglColIdx).value;
-        let tanggalLahir = "";
-        if (rawTanggal instanceof Date) {
-          tanggalLahir = rawTanggal.toISOString().split("T")[0]!;
-        } else {
-          tanggalLahir = String(row.getCell(tglColIdx).text || "").trim();
-        }
+        const cellTanggal = row.getCell(tglColIdx);
+        const tanggalLahir = parseExcelDate(cellTanggal.value) || parseExcelDate(cellTanggal.text);
 
         const alamat = getVal(row, "alamat", 7);
         const rt = getVal(row, "rt", 8);
@@ -371,8 +370,19 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
         const namaAyah = getVal(row, "namaAyah", 14) || null;
         const namaIbu = getVal(row, "namaIbu", 15) || null;
 
-        if (!nik || !noKk || !namaLengkap || !tempatLahir || !tanggalLahir || !alamat || !rt || !rw) {
+        if (!nik && !noKk && !namaLengkap && !tempatLahir && !alamat && !rt && !rw) {
           return; // Abaikan baris kosong
+        }
+
+        if (!tanggalLahir) {
+          const rawDisplay = String(cellTanggal.text || cellTanggal.value || "");
+          errors.push(`Baris ${rowNumber}: Format tanggal lahir '${rawDisplay}' tidak valid (Gunakan format YYYY-MM-DD atau DD/MM/YYYY).`);
+          return;
+        }
+
+        if (!nik || !noKk || !namaLengkap || !tempatLahir || !alamat || !rt || !rw) {
+          errors.push(`Baris ${rowNumber}: Data tidak lengkap (NIK, No KK, Nama, Tempat Lahir, Alamat, RT, dan RW wajib diisi).`);
+          return;
         }
 
         if (nik.length !== 16 || !/^\d{16}$/.test(nik)) {
