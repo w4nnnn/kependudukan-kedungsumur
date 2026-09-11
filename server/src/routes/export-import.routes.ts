@@ -142,6 +142,8 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
         { header: "Status Pernikahan", key: "statusPerkawinan", width: 20 },
         { header: "SHDK", key: "shdk", width: 20 },
         { header: "Pekerjaan", key: "pekerjaan", width: 20 },
+        { header: "Nama Ayah", key: "namaAyah", width: 22 },
+        { header: "Nama Ibu", key: "namaIbu", width: 22 },
       ];
 
       const headerRow = worksheet.getRow(1);
@@ -169,6 +171,8 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
           statusPerkawinan: item.statusPerkawinan,
           shdk: item.shdk,
           pekerjaan: item.pekerjaan || "-",
+          namaAyah: item.namaAyah || "-",
+          namaIbu: item.namaIbu || "-",
         });
 
         row.getCell("nik").numFmt = "@";
@@ -330,8 +334,8 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
         else if (text === "rt" || text.startsWith("rt")) colMap.rt = colNumber;
         else if (text === "rw" || text.startsWith("rw")) colMap.rw = colNumber;
         else if (text.includes("agama")) colMap.agama = colNumber;
+        else if (text.includes("shdk") || text.includes("hubungan") || (text.includes("status") && text.includes("keluarga"))) colMap.shdk = colNumber;
         else if (text.includes("kawin") || text.includes("status") || text.includes("pernikahan")) colMap.statusPerkawinan = colNumber;
-        else if (text.includes("shdk") || text.includes("hubungan") || text.includes("keluarga")) colMap.shdk = colNumber;
         else if (text.includes("pekerjaan") || text.includes("profesi")) colMap.pekerjaan = colNumber;
         else if (text.includes("ayah")) colMap.namaAyah = colNumber;
         else if (text.includes("ibu")) colMap.namaIbu = colNumber;
