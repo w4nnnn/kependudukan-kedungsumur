@@ -9,6 +9,7 @@ interface KependudukanFilterBarProps {
   selectedRt: string
   selectedRw: string
   searchQuery: string
+  isAdmin?: boolean
   onRtChange: (rt: string) => void
   onRwChange: (rw: string) => void
   onSearchChange: (search: string) => void
@@ -21,6 +22,7 @@ export function KependudukanFilterBar({
   selectedRt,
   selectedRw,
   searchQuery,
+  isAdmin = false,
   onRtChange,
   onRwChange,
   onSearchChange,
@@ -74,24 +76,28 @@ export function KependudukanFilterBar({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <Button
-          variant="outline"
-          onClick={onExport}
-          className="gap-2 font-medium shadow-xs"
-          title="Ekspor Data Penduduk ke Excel"
-        >
-          <Download className="h-4 w-4" />
-          <span>Ekspor</span>
-        </Button>
-        <Button
-          variant="outline"
-          onClick={onOpenImport}
-          className="gap-2 font-medium shadow-xs"
-          title="Impor Data Penduduk dari Excel"
-        >
-          <Upload className="h-4 w-4" />
-          <span>Impor</span>
-        </Button>
+        {isAdmin && (
+          <>
+            <Button
+              variant="outline"
+              onClick={onExport}
+              className="gap-2 font-medium shadow-xs"
+              title="Ekspor Data Penduduk ke Excel"
+            >
+              <Download className="h-4 w-4" />
+              <span>Ekspor</span>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={onOpenImport}
+              className="gap-2 font-medium shadow-xs"
+              title="Impor Data Penduduk dari Excel"
+            >
+              <Upload className="h-4 w-4" />
+              <span>Impor</span>
+            </Button>
+          </>
+        )}
         <Button onClick={onAddPenduduk} className="gap-2 font-medium shadow-sm">
           <Plus className="h-4 w-4" />
           Tambah Penduduk

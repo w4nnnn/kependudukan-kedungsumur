@@ -35,6 +35,7 @@ interface KependudukanTableProps {
   currentPage: number
   totalPages: number
   totalData: number
+  isAdmin?: boolean
   onPageChange: (page: number) => void
   onRowClick: (id: string) => void
   onEdit: (id: string) => void
@@ -59,6 +60,7 @@ export function KependudukanTable({
   currentPage,
   totalPages,
   totalData,
+  isAdmin = false,
   onPageChange,
   onRowClick,
   onEdit,
@@ -143,13 +145,15 @@ export function KependudukanTable({
                         >
                           <Pencil className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="destructive"
-                          className="cursor-pointer"
-                          onClick={() => onDelete({ id: penduduk.id, name: penduduk.namaLengkap })}
-                        >
-                          <Trash className="mr-2 h-4 w-4" /> Hapus
-                        </DropdownMenuItem>
+                        {isAdmin && (
+                          <DropdownMenuItem
+                            variant="destructive"
+                            className="cursor-pointer"
+                            onClick={() => onDelete({ id: penduduk.id, name: penduduk.namaLengkap })}
+                          >
+                            <Trash className="mr-2 h-4 w-4" /> Hapus
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuGroup>
                     </DropdownMenuContent>
                   </DropdownMenu>

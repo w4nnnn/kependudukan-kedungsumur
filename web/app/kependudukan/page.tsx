@@ -65,6 +65,8 @@ export default function KependudukanPage() {
 
   if (!session) return null
 
+  const isAdmin = (session.user as any)?.role === "admin"
+
   return (
     <div className="flex w-full flex-col p-4 md:p-8">
       <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -86,6 +88,7 @@ export default function KependudukanPage() {
               selectedRt={selectedRt}
               selectedRw={selectedRw}
               searchQuery={searchQuery}
+              isAdmin={isAdmin}
               onRtChange={(rt) => { setSelectedRt(rt); setCurrentPage(1); }}
               onRwChange={(rw) => { setSelectedRw(rw); setCurrentPage(1); }}
               onSearchChange={setSearchQuery}
@@ -105,6 +108,7 @@ export default function KependudukanPage() {
               currentPage={currentPage}
               totalPages={totalPages}
               totalData={totalData}
+              isAdmin={isAdmin}
               onPageChange={setCurrentPage}
               onRowClick={(id) => router.push(`/kependudukan/${id}`)}
               onEdit={(id) => router.push(`/kependudukan/edit/${id}`)}

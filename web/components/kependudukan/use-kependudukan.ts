@@ -86,6 +86,7 @@ export function useKependudukan(session: unknown) {
     const url = new URL(`${API_BASE_URL}/api/penduduk/export`)
     if (selectedRt !== "ALL") url.searchParams.append("rt", selectedRt)
     if (selectedRw !== "ALL") url.searchParams.append("rw", selectedRw)
+    if (searchQuery.trim()) url.searchParams.append("search", searchQuery.trim())
     
     toast.info("Menyiapkan berkas...", { description: "Sedang mengekspor data penduduk ke Excel." })
     const res = await downloadFileFromApi(url.toString(), "data_penduduk_kedungsumur.xlsx")
