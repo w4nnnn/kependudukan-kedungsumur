@@ -31,7 +31,7 @@ export async function initMinioBucket() {
           Effect: "Allow",
           Principal: "*",
           Action: ["s3:GetObject"],
-          Resource: [`arn:aws:s3:::${BUCKET_NAME}/*`],
+          Resource: [`arn:aws:s3:::${BUCKET_NAME}/penduduk/*`],
         },
       ],
     };

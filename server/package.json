@@ -4,6 +4,7 @@
     "@better-auth/drizzle-adapter": "^1.6.26",
     "@fastify/cors": "^11.3.0",
     "@fastify/multipart": "^10.1.1",
+    "@fastify/rate-limit": "^11.2.0",
     "better-auth": "^1.6.26",
     "cryptr": "^6.4.0",
     "dotenv": "^17.4.2",
