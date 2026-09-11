@@ -66,6 +66,10 @@ export async function deleteFotoPenduduk(objectKey: string): Promise<void> {
   }
 }
 
+export async function getFotoStream(objectKey: string) {
+  return await minioClient.getObject(BUCKET_NAME, objectKey);
+}
+
 export function getPublicFotoUrl(objectKey: string | null | undefined): string | null {
   if (!objectKey) return null;
   const publicBaseUrl = process.env.MINIO_PUBLIC_URL || `http://${endPoint}:${port}/${BUCKET_NAME}`;

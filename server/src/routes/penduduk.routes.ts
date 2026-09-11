@@ -3,7 +3,7 @@ import { db } from "../db/index.js";
 import { pendudukTable, kartuKeluargaTable, hashKependudukan } from "../db/schema/schema.js";
 import { eq, ilike, and, sql, desc, asc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middlewares/auth.middleware.js";
-import { uploadFotoPenduduk, deleteFotoPenduduk, getPublicFotoUrl } from "../lib/minio.js";
+import { uploadFotoPenduduk, deleteFotoPenduduk, getPublicFotoUrl, getFotoStream } from "../lib/minio.js";
 import path from "path";
 
 type PendudukInsert = typeof pendudukTable.$inferInsert;
@@ -108,6 +108,14 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ success: false, message: "Data penduduk tidak ditemukan." });
       }
 
+      const currentUser = (request as any).user;
+      if (currentUser?.role !== "admin" && currentUser?.rt && record.rt !== currentUser.rt) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RT ${currentUser.rt}.` });
+      }
+      if (currentUser?.role !== "admin" && currentUser?.rw && record.rw !== currentUser.rw) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RW ${currentUser.rw}.` });
+      }
+
       let kartuKeluarga = null;
       let anggotaKeluarga: any[] = [];
 
@@ -180,6 +188,23 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
 
       if (createKk && (!createKk.noKk || !/^\d{16}$/.test(createKk.noKk))) {
         return reply.status(400).send({ success: false, message: "Nomor KK harus 16 digit." });
+      }
+
+      if (
+        !body.namaLengkap ||
+        !body.tempatLahir ||
+        !body.tanggalLahir ||
+        !body.jenisKelamin ||
+        !body.alamat ||
+        !body.rt ||
+        !body.rw ||
+        !body.agama ||
+        !body.statusPerkawinan
+      ) {
+        return reply.status(400).send({
+          success: false,
+          message: "Data wajib tidak lengkap (Nama, Tempat/Tgl Lahir, Jenis Kelamin, Alamat, RT/RW, Agama, Status Perkawinan wajib diisi).",
+        });
       }
 
       const currentUser = (request as any).user;
@@ -460,8 +485,9 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
           throw { statusCode: 500, message: "Gagal memperbarui data penduduk." };
         }
 
-        if (updatedRecord.kartuKeluargaId && body.shdk) {
-          if (body.shdk.toUpperCase() === "KEPALA KELUARGA") {
+        if (updatedRecord.kartuKeluargaId) {
+          const isKepala = (body.shdk ? body.shdk : updatedRecord.shdk)?.toUpperCase() === "KEPALA KELUARGA";
+          if (isKepala) {
             await tx
               .update(pendudukTable)
               .set({ shdk: "ANGGOTA KELUARGA" })
@@ -477,9 +503,21 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
               .update(kartuKeluargaTable)
               .set({ kepalaKeluargaId: updatedRecord.id })
               .where(eq(kartuKeluargaTable.id, updatedRecord.kartuKeluargaId));
+
+            if (body.alamat || body.rt || body.rw) {
+              const kkSyncPayload: any = {};
+              if (body.alamat) kkSyncPayload.alamat = body.alamat;
+              if (body.rt) kkSyncPayload.rt = body.rt;
+              if (body.rw) kkSyncPayload.rw = body.rw;
+              await tx
+                .update(kartuKeluargaTable)
+                .set(kkSyncPayload)
+                .where(eq(kartuKeluargaTable.id, updatedRecord.kartuKeluargaId));
+            }
           } else if (
             currentRecord.kartuKeluargaId === updatedRecord.kartuKeluargaId &&
-            currentRecord.shdk.toUpperCase() === "KEPALA KELUARGA"
+            currentRecord.shdk.toUpperCase() === "KEPALA KELUARGA" &&
+            body.shdk && body.shdk.toUpperCase() !== "KEPALA KELUARGA"
           ) {
             await tx
               .update(kartuKeluargaTable)
@@ -520,6 +558,41 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
     }
   });
 
+  fastify.get<{ Params: ParamsWithId }>("/api/penduduk/:id/foto", async (request, reply) => {
+    try {
+      const { id } = request.params;
+
+      const existing = await db.select().from(pendudukTable).where(eq(pendudukTable.id, id));
+      const current = existing[0];
+      if (!current || !current.foto) {
+        return reply.status(404).send({ success: false, message: "Foto penduduk tidak ditemukan." });
+      }
+
+      const currentUser = (request as any).user;
+      if (currentUser?.role !== "admin" && currentUser?.rt && current.rt !== currentUser.rt) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RT ${currentUser.rt}.` });
+      }
+      if (currentUser?.role !== "admin" && currentUser?.rw && current.rw !== currentUser.rw) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RW ${currentUser.rw}.` });
+      }
+
+      const stream = await getFotoStream(current.foto);
+      const ext = path.extname(current.foto).toLowerCase();
+      const mimeTypes: Record<string, string> = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+      };
+      reply.header("Content-Type", mimeTypes[ext] || "application/octet-stream");
+      reply.header("Cache-Control", "private, max-age=3600");
+      return reply.send(stream);
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send({ success: false, message: "Gagal mengambil foto penduduk." });
+    }
+  });
+
   fastify.post<{ Params: ParamsWithId }>("/api/penduduk/:id/foto", async (request, reply) => {
     try {
       const { id } = request.params;
@@ -528,6 +601,14 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
       const current = existing[0];
       if (!current) {
         return reply.status(404).send({ success: false, message: "Data penduduk tidak ditemukan." });
+      }
+
+      const currentUser = (request as any).user;
+      if (currentUser?.role !== "admin" && currentUser?.rt && current.rt !== currentUser.rt) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RT ${currentUser.rt}.` });
+      }
+      if (currentUser?.role !== "admin" && currentUser?.rw && current.rw !== currentUser.rw) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RW ${currentUser.rw}.` });
       }
 
       const file = await request.file();
@@ -605,6 +686,14 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
       const current = existing[0];
       if (!current) {
         return reply.status(404).send({ success: false, message: "Data penduduk tidak ditemukan." });
+      }
+
+      const currentUser = (request as any).user;
+      if (currentUser?.role !== "admin" && currentUser?.rt && current.rt !== currentUser.rt) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RT ${currentUser.rt}.` });
+      }
+      if (currentUser?.role !== "admin" && currentUser?.rw && current.rw !== currentUser.rw) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RW ${currentUser.rw}.` });
       }
 
       if (current.foto) {

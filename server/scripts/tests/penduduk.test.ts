@@ -87,6 +87,21 @@ export async function runPendudukTests(client: TestClient, runner: TestRunner) {
     assertEqual(checkKkRes.body.data.length, 0, "KK harus bersih / di-rollback (0 record)");
   });
 
+  await runner.step("POST /api/penduduk (Validasi Data Wajib Tidak Lengkap -> Expect 400)", async () => {
+    const res = await client.request("/api/penduduk", {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        nik: generate16Digits("3573"),
+        noKk: generate16Digits("3573"),
+      }),
+    });
+
+    assertEqual(res.status, 400, "HTTP Status Expect 400");
+    assertEqual(res.body.success, false, "response.success false");
+    assert(res.body.message.includes("Data wajib tidak lengkap"), "Pesan error data wajib tidak lengkap");
+  });
+
   await runner.step("GET /api/penduduk/:id (Detail Penduduk & Validasi Dekripsi Otomatis)", async () => {
     const res = await client.request(`/api/penduduk/${createdPendudukId}`, {
       headers: client.getAuthHeaders(false),
@@ -262,6 +277,15 @@ export async function runPendudukTests(client: TestClient, runner: TestRunner) {
     assert(res.body.data.fotoUrl.includes(res.body.data.foto), "fotoUrl harus memuat foto key");
   });
 
+  await runner.step("GET /api/penduduk/:id/foto (Stream Foto Penduduk Terproteksi)", async () => {
+    const res = await client.request(`/api/penduduk/${createdPendudukId}/foto`, {
+      headers: client.getAuthHeaders(false),
+    });
+
+    assertEqual(res.status, 200, "HTTP Status Stream Foto");
+    assertEqual(res.headers.get("content-type"), "image/png", "Content-Type image/png");
+  });
+
   await runner.step("DELETE /api/penduduk/:id/foto (Hapus Foto Penduduk)", async () => {
     const res = await client.request(`/api/penduduk/${createdPendudukId}/foto`, {
       method: "DELETE",
@@ -272,6 +296,14 @@ export async function runPendudukTests(client: TestClient, runner: TestRunner) {
     assertEqual(res.body.success, true, "deleteFoto.success");
     assertEqual(res.body.data.foto, null, "data.foto null");
     assertEqual(res.body.data.fotoUrl, null, "data.fotoUrl null");
+  });
+
+  await runner.step("GET /api/penduduk/:id/foto (Stream Foto Penduduk Terproteksi)", async () => {
+    const res = await client.request(`/api/penduduk/${createdPendudukId}/foto`, {
+      headers: client.getAuthHeaders(false),
+    });
+
+    assertEqual(res.status, 404, "HTTP Status Foto Setelah Dihapus");
   });
 
   await runner.step("PUT /api/penduduk/:id (Update ID Tidak Ada -> Expect 404)", async () => {
