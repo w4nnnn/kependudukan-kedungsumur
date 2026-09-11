@@ -9,6 +9,16 @@ export function parseExcelDate(val: unknown): string | null {
     return `${year}-${month}-${day}`;
   }
 
+  if (typeof val === "number") {
+    if (isNaN(val) || !isFinite(val) || val < 1 || val > 100000) return null;
+    const utcDays = Math.floor(val - 25569);
+    const date = new Date(utcDays * 86400 * 1000);
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
   const str = String(val).trim();
   if (!str) return null;
 
@@ -37,9 +47,22 @@ export function parseExcelDate(val: unknown): string | null {
     return null;
   }
 
+  if (/^\d{4,5}(\.\d+)?$/.test(str)) {
+    const num = Number(str);
+    if (num >= 1 && num <= 100000) {
+      const utcDays = Math.floor(num - 25569);
+      const date = new Date(utcDays * 86400 * 1000);
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(date.getUTCDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+  }
+
   const parsed = new Date(str);
   if (!isNaN(parsed.getTime())) {
     const year = parsed.getFullYear();
+    if (year < 1900 || year > 2100) return null;
     const month = String(parsed.getMonth() + 1).padStart(2, "0");
     const day = String(parsed.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;

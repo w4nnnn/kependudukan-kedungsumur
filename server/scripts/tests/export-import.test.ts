@@ -252,6 +252,7 @@ export async function runExportImportTests(client: TestClient, runner: TestRunne
 
   const testNikDateObj = generate16Digits("3573");
   const testNikDateStr = generate16Digits("3573");
+  const testNikDateSerial = generate16Digits("3573");
   const testKkDate = generate16Digits("3573");
 
   await runner.step("POST /api/penduduk/import (Validasi Tanggal Lahir Presisi Tanpa Pergeseran -1 Hari & Format DD/MM/YYYY)", async () => {
@@ -296,6 +297,19 @@ export async function runExportImportTests(client: TestClient, runner: TestRunne
       shdk: "ISTRI",
     });
 
+    worksheet.addRow({
+      nik: testNikDateSerial,
+      noKk: testKkDate,
+      namaLengkap: "Warga Tanggal Serial Numeric",
+      jenisKelamin: "Laki-laki",
+      tempatLahir: "Kedungsumur",
+      tanggalLahir: 29221,
+      alamat: "Jl. Merdeka No. 17",
+      rt: "001",
+      rw: "001",
+      shdk: "ANAK",
+    });
+
     const buffer = await workbook.xlsx.writeBuffer();
     const formData = new FormData();
     formData.append("file", new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "import_dates.xlsx");
@@ -306,7 +320,7 @@ export async function runExportImportTests(client: TestClient, runner: TestRunne
       body: formData,
     });
     assertEqual(importRes.status, 200, "HTTP Status Import Dates");
-    assertEqual(importRes.body.data.berhasil, 2, "2 baris berhasil diimport");
+    assertEqual(importRes.body.data.berhasil, 3, "3 baris berhasil diimport");
 
     const getRes1 = await client.request(`/api/penduduk?nik=${testNikDateObj}`, {
       headers: client.getAuthHeaders(false),
@@ -317,6 +331,11 @@ export async function runExportImportTests(client: TestClient, runner: TestRunne
       headers: client.getAuthHeaders(false),
     });
     assertEqual(getRes2.body?.data?.[0]?.tanggalLahir, "1995-08-17", "Tanggal lahir string 17/08/1995 harus dinormalisasi menjadi 1995-08-17");
+
+    const getRes3 = await client.request(`/api/penduduk?nik=${testNikDateSerial}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(getRes3.body?.data?.[0]?.tanggalLahir, "1980-01-01", "Tanggal lahir serial numeric 29221 harus dinormalisasi menjadi 1980-01-01");
   });
 
   const cleanupNik = async (nik: string) => {
@@ -350,6 +369,7 @@ export async function runExportImportTests(client: TestClient, runner: TestRunne
   await cleanupNik(testNikAnakImpor);
   await cleanupNik(testNikDateObj);
   await cleanupNik(testNikDateStr);
+  await cleanupNik(testNikDateSerial);
   await cleanupKk(testNoKk);
   await cleanupKk(testKkDup);
   await cleanupKk(testKkExistingNo);
