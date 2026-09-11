@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { authClient } from "@/lib/auth-client"
@@ -13,6 +13,27 @@ import { PenggunaCreateForm } from "@/components/pengguna/pengguna-create-form"
 export default function TambahPenggunaPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const { data: session, isPending } = authClient.useSession()
+
+  useEffect(() => {
+    if (!isPending) {
+      if (!session) {
+        router.push("/login")
+      } else if ((session.user as any).role !== "admin") {
+        router.push("/dashboard")
+      }
+    }
+  }, [session, isPending, router])
+
+  if (isPending) {
+    return (
+      <div className="flex h-full min-h-screen items-center justify-center p-24">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!session || (session.user as any).role !== "admin") return null
 
   async function onSubmit(data: UserFormValues) {
     setIsLoading(true)

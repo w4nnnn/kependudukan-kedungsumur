@@ -99,23 +99,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               }`}
             />
           </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton 
-              render={
-                <Link href="/pengguna">
-                  <UserCog className="size-4 shrink-0" />
-                  <span className="font-medium">Pengguna</span>
-                </Link>
-              }
-              isActive={pathname.startsWith("/pengguna")}
-              tooltip="Manajemen Pengguna"
-              className={`rounded-xl px-3 py-2.5 transition-all duration-200 ${
-                pathname.startsWith("/pengguna")
-                  ? "border-2 border-primary bg-primary/10 text-primary font-bold shadow-xs ring-2 ring-primary/20"
-                  : "border-2 border-sidebar-border bg-card hover:border-primary/40 hover:bg-sidebar-accent text-sidebar-foreground"
-              }`}
-            />
-          </SidebarMenuItem>
+          {session?.user && (session.user as any).role === "admin" && (
+            <SidebarMenuItem>
+              <SidebarMenuButton 
+                render={
+                  <Link href="/pengguna">
+                    <UserCog className="size-4 shrink-0" />
+                    <span className="font-medium">Pengguna</span>
+                  </Link>
+                }
+                isActive={pathname.startsWith("/pengguna")}
+                tooltip="Manajemen Pengguna"
+                className={`rounded-xl px-3 py-2.5 transition-all duration-200 ${
+                  pathname.startsWith("/pengguna")
+                    ? "border-2 border-primary bg-primary/10 text-primary font-bold shadow-xs ring-2 ring-primary/20"
+                    : "border-2 border-sidebar-border bg-card hover:border-primary/40 hover:bg-sidebar-accent text-sidebar-foreground"
+                }`}
+              />
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-3 bg-sidebar">

@@ -39,8 +39,12 @@ export default function EditPenggunaPage() {
   } = useEditPengguna(userId, session?.user?.id)
 
   useEffect(() => {
-    if (!isSessionPending && !session) {
-      router.push("/login")
+    if (!isSessionPending) {
+      if (!session) {
+        router.push("/login")
+      } else if ((session.user as any).role !== "admin") {
+        router.push("/dashboard")
+      }
     }
   }, [session, isSessionPending, router])
 
@@ -52,7 +56,7 @@ export default function EditPenggunaPage() {
     )
   }
 
-  if (!session || !userData) return null
+  if (!session || (session.user as any).role !== "admin" || !userData) return null
 
   const isSelf = userData.id === session.user.id
 

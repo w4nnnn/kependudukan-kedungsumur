@@ -39,8 +39,12 @@ export default function PenggunaPage() {
   }, [])
 
   useEffect(() => {
-    if (mounted && !isSessionPending && !session) {
-      router.push("/login")
+    if (mounted && !isSessionPending) {
+      if (!session) {
+        router.push("/login")
+      } else if ((session.user as any).role !== "admin") {
+        router.push("/dashboard")
+      }
     }
   }, [mounted, session, isSessionPending, router])
 
@@ -52,7 +56,7 @@ export default function PenggunaPage() {
     )
   }
 
-  if (!session) return null
+  if (!session || (session.user as any).role !== "admin") return null
 
   return (
     <div className="flex w-full flex-col p-4 md:p-8">
