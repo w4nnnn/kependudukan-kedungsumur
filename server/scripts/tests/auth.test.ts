@@ -126,6 +126,8 @@ export async function runAuthTests(client: TestClient, runner: TestRunner) {
         role: "user",
         data: {
           username: regularUsername,
+          rt: "001",
+          rw: "001",
         },
       }),
     });
@@ -166,6 +168,78 @@ export async function runAuthTests(client: TestClient, runner: TestRunner) {
       headers: regularClient.getAuthHeaders(false),
     });
     assertEqual(deleteRes.status, 403, "Staf non-admin dilarang delete penduduk (Expect 403)");
+
+    const targetNik = `357301${Date.now().toString().slice(-10)}`;
+    const targetNoKk = `357302${Date.now().toString().slice(-10)}`;
+    const createTargetPenduduk = await client.request("/api/penduduk", {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        nik: targetNik,
+        noKk: targetNoKk,
+        namaLengkap: "Warga Wilayah RT 002 Testing",
+        jenisKelamin: "Laki-laki",
+        tempatLahir: "Kedungsumur",
+        tanggalLahir: "1995-01-01",
+        alamat: "Jl. RT 002 No. 1",
+        rt: "002",
+        rw: "001",
+        agama: "Islam",
+        statusPerkawinan: "Belum Kawin",
+        createKk: {
+          noKk: targetNoKk,
+          alamat: "Jl. RT 002 No. 1",
+          rt: "002",
+          rw: "001",
+        },
+      }),
+    });
+    assertEqual(createTargetPenduduk.status, 201, "Admin create target resident di RT 002");
+    const targetPendudukId = createTargetPenduduk.body?.data?.id;
+    const targetKkId = createTargetPenduduk.body?.data?.kartuKeluargaId;
+
+    const idorPendudukRes = await regularClient.request(`/api/penduduk/${targetPendudukId}`, {
+      headers: regularClient.getAuthHeaders(),
+    });
+    assertEqual(idorPendudukRes.status, 403, "Staf RT 001 dilarang akses detail penduduk RT 002 (Expect 403)");
+
+    const idorKkRes = await regularClient.request(`/api/kk/${targetKkId}`, {
+      headers: regularClient.getAuthHeaders(),
+    });
+    assertEqual(idorKkRes.status, 403, "Staf RT 001 dilarang akses detail KK RT 002 (Expect 403)");
+
+    const idorAddAnggotaRes = await regularClient.request(`/api/kk/${targetKkId}/anggota`, {
+      method: "POST",
+      headers: regularClient.getAuthHeaders(),
+      body: JSON.stringify({
+        mode: "create",
+        penduduk: {
+          nik: `357303${Date.now().toString().slice(-10)}`,
+          namaLengkap: "Anggota Baru Palsu",
+          tempatLahir: "Malang",
+          tanggalLahir: "2000-01-01",
+          jenisKelamin: "Laki-laki",
+          agama: "Islam",
+          statusPerkawinan: "Belum Kawin",
+        },
+      }),
+    });
+    assertEqual(idorAddAnggotaRes.status, 403, "Staf RT 001 dilarang tambah anggota ke KK RT 002 (Expect 403)");
+
+    const idorRemoveAnggotaRes = await regularClient.request(`/api/kk/${targetKkId}/anggota/${targetPendudukId}`, {
+      method: "DELETE",
+      headers: regularClient.getAuthHeaders(false),
+    });
+    assertEqual(idorRemoveAnggotaRes.status, 403, "Staf RT 001 dilarang keluarkan anggota dari KK RT 002 (Expect 403)");
+
+    await client.request(`/api/penduduk/${targetPendudukId}`, {
+      method: "DELETE",
+      headers: client.getAuthHeaders(false),
+    });
+    await client.request(`/api/kk/${targetKkId}`, {
+      method: "DELETE",
+      headers: client.getAuthHeaders(false),
+    });
 
     const banRes = await client.request("/api/auth/admin/ban-user", {
       method: "POST",

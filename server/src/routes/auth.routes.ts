@@ -27,9 +27,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
         if (typeof (response.headers as any).getSetCookie === "function") {
           const cookies: string[] = (response.headers as any).getSetCookie();
-          cookies.forEach((cookieStr) => {
-            reply.header("set-cookie", cookieStr);
-          });
+          if (cookies && cookies.length > 0) {
+            reply.header("set-cookie", cookies);
+          }
+        } else {
+          const cookieHeader = response.headers.get("set-cookie");
+          if (cookieHeader) {
+            reply.header("set-cookie", cookieHeader);
+          }
         }
 
         response.headers.forEach((value, key) => {
