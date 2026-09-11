@@ -449,18 +449,39 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
         }
         seenNiksInFile.add(nik);
 
+        const rawJk = String(jenisKelamin || "").trim().toLowerCase();
+        const normalizedJk = (rawJk.startsWith("p") || rawJk === "wanita" || rawJk === "female") ? "Perempuan" : "Laki-laki";
+
+        const cleanAgama = String(agama || "").trim().toLowerCase();
+        let normalizedAgama = "Islam";
+        if (cleanAgama.includes("kristen") || cleanAgama.includes("protestan")) normalizedAgama = "Kristen";
+        else if (cleanAgama.includes("katolik")) normalizedAgama = "Katolik";
+        else if (cleanAgama.includes("hindu")) normalizedAgama = "Hindu";
+        else if (cleanAgama.includes("buddha") || cleanAgama.includes("budha")) normalizedAgama = "Buddha";
+        else if (cleanAgama.includes("konghucu") || cleanAgama.includes("khonghucu")) normalizedAgama = "Konghucu";
+
+        const cleanKawin = String(statusPerkawinan || "").trim().toLowerCase();
+        let normalizedStatusKawin = "Belum Kawin";
+        if (cleanKawin.includes("cerai hidup")) normalizedStatusKawin = "Cerai Hidup";
+        else if (cleanKawin.includes("cerai mati")) normalizedStatusKawin = "Cerai Mati";
+        else if (cleanKawin.includes("kawin") || cleanKawin.includes("menikah")) {
+          if (!cleanKawin.includes("belum") && !cleanKawin.includes("tidak")) {
+            normalizedStatusKawin = "Kawin";
+          }
+        }
+
         parsedRows.push({
           nik,
           noKk,
           namaLengkap,
-          jenisKelamin: jenisKelamin || "Laki-laki",
+          jenisKelamin: normalizedJk,
           tempatLahir,
           tanggalLahir,
           alamat,
           rt: rt.padStart(3, "0"),
           rw: rw.padStart(3, "0"),
-          agama: agama || "Islam",
-          statusPerkawinan: statusPerkawinan || "Belum Kawin",
+          agama: normalizedAgama,
+          statusPerkawinan: normalizedStatusKawin,
           shdk,
           pekerjaan: pekerjaan || "-",
           namaAyah,
@@ -586,6 +607,19 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
           }
 
           if (kepalaId) {
+            if (hasExplicitKepala && existingKepalaId && existingKepalaId !== kepalaId) {
+              await tx
+                .update(pendudukTable)
+                .set({ shdk: "ANGGOTA KELUARGA" })
+                .where(
+                  and(
+                    eq(pendudukTable.kartuKeluargaId, kkId),
+                    eq(pendudukTable.shdk, "KEPALA KELUARGA"),
+                    sql`${pendudukTable.id} != ${kepalaId}`
+                  )
+                );
+            }
+
             await tx
               .update(kartuKeluargaTable)
               .set({ kepalaKeluargaId: kepalaId })

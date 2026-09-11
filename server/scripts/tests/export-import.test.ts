@@ -338,6 +338,84 @@ export async function runExportImportTests(client: TestClient, runner: TestRunne
     assertEqual(getRes3.body?.data?.[0]?.tanggalLahir, "1980-01-01", "Tanggal lahir serial numeric 29221 harus dinormalisasi menjadi 1980-01-01");
   });
 
+  const testNikNorm1 = generate16Digits("3573");
+  const testNikNorm2 = generate16Digits("3573");
+  const testKkNorm = generate16Digits("3573");
+
+  await runner.step("POST /api/penduduk/import (Normalisasi Jenis Kelamin L/P & Agama/Kawin Sesuai Enum)", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Sheet1");
+    worksheet.columns = [
+      { header: "NIK", key: "nik" },
+      { header: "No KK", key: "noKk" },
+      { header: "Nama Lengkap", key: "namaLengkap" },
+      { header: "Jenis Kelamin", key: "jenisKelamin" },
+      { header: "Tempat Lahir", key: "tempatLahir" },
+      { header: "Tanggal Lahir", key: "tanggalLahir" },
+      { header: "Alamat", key: "alamat" },
+      { header: "RT", key: "rt" },
+      { header: "RW", key: "rw" },
+      { header: "Agama", key: "agama" },
+      { header: "Status Perkawinan", key: "statusPerkawinan" },
+      { header: "SHDK", key: "shdk" },
+    ];
+
+    worksheet.addRow({
+      nik: testNikNorm1,
+      noKk: testKkNorm,
+      namaLengkap: "Warga Normalisasi Laki",
+      jenisKelamin: "L",
+      tempatLahir: "Kedungsumur",
+      tanggalLahir: "1990-01-01",
+      alamat: "Jl. Normalisasi No. 1",
+      rt: "001",
+      rw: "001",
+      agama: "ISLAM",
+      statusPerkawinan: "KAWIN",
+      shdk: "KEPALA KELUARGA",
+    });
+
+    worksheet.addRow({
+      nik: testNikNorm2,
+      noKk: testKkNorm,
+      namaLengkap: "Warga Normalisasi Perempuan",
+      jenisKelamin: "P",
+      tempatLahir: "Kedungsumur",
+      tanggalLahir: "1992-02-02",
+      alamat: "Jl. Normalisasi No. 1",
+      rt: "001",
+      rw: "001",
+      agama: "kristen",
+      statusPerkawinan: "belum kawin",
+      shdk: "ISTRI",
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const formData = new FormData();
+    formData.append("file", new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "norm.xlsx");
+
+    const importRes = await client.request("/api/penduduk/import", {
+      method: "POST",
+      headers: client.getAuthHeaders(false),
+      body: formData,
+    });
+    assertEqual(importRes.status, 200, "HTTP Status Import Normalisasi");
+
+    const getRes1 = await client.request(`/api/penduduk?nik=${testNikNorm1}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(getRes1.body?.data?.[0]?.jenisKelamin, "Laki-laki", "L dinormalisasi ke Laki-laki");
+    assertEqual(getRes1.body?.data?.[0]?.agama, "Islam", "ISLAM dinormalisasi ke Islam");
+    assertEqual(getRes1.body?.data?.[0]?.statusPerkawinan, "Kawin", "KAWIN dinormalisasi ke Kawin");
+
+    const getRes2 = await client.request(`/api/penduduk?nik=${testNikNorm2}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(getRes2.body?.data?.[0]?.jenisKelamin, "Perempuan", "P dinormalisasi ke Perempuan");
+    assertEqual(getRes2.body?.data?.[0]?.agama, "Kristen", "kristen dinormalisasi ke Kristen");
+    assertEqual(getRes2.body?.data?.[0]?.statusPerkawinan, "Belum Kawin", "belum kawin dinormalisasi ke Belum Kawin");
+  });
+
   const cleanupNik = async (nik: string) => {
     const check = await client.request(`/api/penduduk?nik=${nik}`, {
       headers: client.getAuthHeaders(false),
@@ -370,8 +448,11 @@ export async function runExportImportTests(client: TestClient, runner: TestRunne
   await cleanupNik(testNikDateObj);
   await cleanupNik(testNikDateStr);
   await cleanupNik(testNikDateSerial);
+  await cleanupNik(testNikNorm1);
+  await cleanupNik(testNikNorm2);
   await cleanupKk(testNoKk);
   await cleanupKk(testKkDup);
   await cleanupKk(testKkExistingNo);
   await cleanupKk(testKkDate);
+  await cleanupKk(testKkNorm);
 }
