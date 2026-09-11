@@ -2,6 +2,15 @@ import { pgTable, varchar, date, uuid, customType, index, timestamp } from "driz
 import { createHash, randomBytes, createCipheriv, createDecipheriv } from "crypto";
 import "dotenv/config";
 
+if (process.env.NODE_ENV === "production") {
+  if (!process.env.ENCRYPTION_SECRET_KEY || process.env.ENCRYPTION_SECRET_KEY === "rahasia_negara_development_key_12345") {
+    throw new Error("ENCRYPTION_SECRET_KEY harus dikonfigurasi dengan kunci aman di lingkungan production.");
+  }
+  if (!process.env.HASH_SALT || process.env.HASH_SALT === "garam_hashing_desa_123") {
+    throw new Error("HASH_SALT harus dikonfigurasi dengan salt aman di lingkungan production.");
+  }
+}
+
 const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET_KEY || "rahasia_negara_development_key_12345";
 const aesKey = createHash("sha256").update(ENCRYPTION_SECRET).digest();
 
@@ -45,7 +54,12 @@ const encryptedVarchar = customType<{ data: string; driverData: string }>({
   },
   fromDriver(value: unknown) {
     if (typeof value !== "string") return value as string;
-    return decryptAesGcm(value);
+    try {
+      return decryptAesGcm(value);
+    } catch (error: any) {
+      console.error("[DECRYPTION_ERROR] Gagal mendekripsi field:", error?.message);
+      return "[DECRYPTION_FAILED]";
+    }
   },
 });
 
