@@ -463,10 +463,10 @@ export default async function statsRoutes(fastify: FastifyInstance) {
         .text("( ................................................ )", 55, signY + 55)
         .text("( ................................................ )", 380, signY + 55);
 
-      doc.end();
-
-      const pdfBuffer = await new Promise<Buffer>((resolve) => {
+      const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
         doc.on("end", () => resolve(Buffer.concat(chunks)));
+        doc.on("error", (err) => reject(err));
+        doc.end();
       });
 
       reply.header("Content-Type", "application/pdf");
