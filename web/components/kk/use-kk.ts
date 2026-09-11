@@ -9,11 +9,15 @@ import type { KartuKeluarga } from "./types"
 
 export function useKK(session: unknown) {
   const router = useRouter()
+  const user = (session as any)?.user
+  const initialRt = (user?.role !== "admin" && user?.rt) ? user.rt : "ALL"
+  const initialRw = (user?.role !== "admin" && user?.rw) ? user.rw : "ALL"
+
   const [dataKK, setDataKK] = useState<KartuKeluarga[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedRt, setSelectedRt] = useState<string>("ALL")
-  const [selectedRw, setSelectedRw] = useState<string>("ALL")
+  const [selectedRt, setSelectedRt] = useState<string>(initialRt)
+  const [selectedRw, setSelectedRw] = useState<string>(initialRw)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalData, setTotalData] = useState(0)
@@ -64,6 +68,11 @@ export function useKK(session: unknown) {
 
   useEffect(() => {
     if (session) {
+      const u = (session as any)?.user
+      if (u?.role !== "admin") {
+        if (u?.rt) setSelectedRt(u.rt)
+        if (u?.rw) setSelectedRw(u.rw)
+      }
       fetchKK(searchQuery, selectedRt, selectedRw, currentPage)
     }
   }, [session, currentPage, selectedRt, selectedRw])

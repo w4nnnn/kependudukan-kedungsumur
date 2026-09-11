@@ -88,6 +88,15 @@ export function usePengguna(session: unknown) {
   const handleDelete = async () => {
     if (!deleteData) return
 
+    const currentUserId = (session as any)?.user?.id
+    if (currentUserId && deleteData.id === currentUserId) {
+      toast.error("Operasi ditolak", {
+        description: "Anda tidak dapat menghapus akun Anda sendiri.",
+      })
+      setDeleteData(null)
+      return
+    }
+
     setIsDeleting(true)
     try {
       const res = await authClient.admin.removeUser({

@@ -45,9 +45,13 @@ export const editPendudukFormSchema = z.object({
     .string()
     .min(3, "Tempat Lahir minimal 3 karakter")
     .regex(REGEX_TEMPAT_LAHIR, "Tempat lahir hanya boleh berisi huruf dan spasi"),
-  tanggalLahir: z.date({
-    required_error: "Pilih tanggal lahir",
-  }),
+  tanggalLahir: z
+    .date({
+      required_error: "Pilih tanggal lahir",
+    })
+    .refine((date) => date <= new Date(), {
+      message: "Tanggal lahir tidak boleh di masa depan",
+    }),
   jenisKelamin: z.enum(["Laki-laki", "Perempuan"], { required_error: "Pilih jenis kelamin" }),
   alamat: z
     .string()
