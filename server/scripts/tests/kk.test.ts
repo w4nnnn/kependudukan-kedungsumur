@@ -304,6 +304,18 @@ export async function runKKTests(client: TestClient, runner: TestRunner) {
     assertEqual(checkPenduduk.body.data.rt, updatePayload.rt, "rt anggota tersinkron");
   });
 
+  await runner.step("PUT /api/kk/:id (Validasi No KK Tidak 16 Digit -> Expect 400)", async () => {
+    const res = await client.request(`/api/kk/${createdKkId}`, {
+      method: "PUT",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({ noKk: "12345" }),
+    });
+
+    assertEqual(res.status, 400, "HTTP Status invalid noKk");
+    assertEqual(res.body.success, false, "response.success false");
+    assertEqual(res.body.message, "Nomor KK harus 16 digit angka.", "response.message");
+  });
+
   await runner.step("POST /api/kk/:id/anggota (Tambah Anggota Baru Mode 'create')", async () => {
     const res = await client.request(`/api/kk/${createdKkId}/anggota`, {
       method: "POST",
@@ -353,6 +365,50 @@ export async function runKKTests(client: TestClient, runner: TestRunner) {
 
     assertEqual(res.status, 400, "HTTP Status");
     assertEqual(res.body.success, false, "response.success");
+  });
+
+  await runner.step("POST /api/kk/:id/anggota (Promosi Kepala Keluarga Baru Menurunkan Kepala Keluarga Lama)", async () => {
+    const promoteRes = await client.request(`/api/kk/${createdKkId}/anggota`, {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        mode: "select",
+        pendudukId: createdAnggotaId,
+        shdk: "KEPALA KELUARGA",
+      }),
+    });
+
+    assertEqual(promoteRes.status, 200, "Promote anggota status");
+
+    const kkDetailRes = await client.request(`/api/kk/${createdKkId}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(kkDetailRes.body.data.kepalaKeluargaId, createdAnggotaId, "kepalaKeluargaId berpindah ke anggota baru");
+
+    const oldKepalaRes = await client.request(`/api/penduduk/${createdKepalaId}`, {
+      headers: client.getAuthHeaders(false),
+    });
+    assertEqual(oldKepalaRes.body.data.shdk, "ANGGOTA KELUARGA", "Kepala lama diturunkan menjadi ANGGOTA KELUARGA");
+
+    await client.request(`/api/kk/${createdKkId}/anggota`, {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        mode: "select",
+        pendudukId: createdKepalaId,
+        shdk: "KEPALA KELUARGA",
+      }),
+    });
+
+    await client.request(`/api/kk/${createdKkId}/anggota`, {
+      method: "POST",
+      headers: client.getAuthHeaders(),
+      body: JSON.stringify({
+        mode: "select",
+        pendudukId: createdAnggotaId,
+        shdk: "ANAK",
+      }),
+    });
   });
 
   await runner.step("DELETE /api/kk/:id/anggota/:pendudukId (Keluarkan Anggota dari KK)", async () => {
