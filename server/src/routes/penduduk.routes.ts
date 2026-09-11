@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/index.js";
 import { pendudukTable, kartuKeluargaTable, hashKependudukan } from "../db/schema/schema.js";
 import { eq, ilike, and, sql, desc } from "drizzle-orm";
-import { requireAuth } from "../middlewares/auth.middleware.js";
+import { requireAuth, requireAdmin } from "../middlewares/auth.middleware.js";
 import { uploadFotoPenduduk, deleteFotoPenduduk, getPublicFotoUrl } from "../lib/minio.js";
 import path from "path";
 
@@ -371,7 +371,7 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.delete<{ Params: ParamsWithId }>("/api/penduduk/:id", async (request, reply) => {
+  fastify.delete<{ Params: ParamsWithId }>("/api/penduduk/:id", { preHandler: requireAdmin }, async (request, reply) => {
     try {
       const { id } = request.params;
 

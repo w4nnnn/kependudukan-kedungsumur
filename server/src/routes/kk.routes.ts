@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
 import { kartuKeluargaTable, pendudukTable, hashKependudukan } from "../db/schema/schema.js";
 import { eq, ilike, and, or, sql, asc, desc, inArray } from "drizzle-orm";
-import { requireAuth } from "../middlewares/auth.middleware.js";
+import { requireAuth, requireAdmin } from "../middlewares/auth.middleware.js";
 import { getPublicFotoUrl } from "../lib/minio.js";
 
 type KartuKeluargaInsert = typeof kartuKeluargaTable.$inferInsert;
@@ -578,7 +578,7 @@ export default async function kkRoutes(fastify: FastifyInstance) {
   });
 
   // 7. DELETE /api/kk/:id (Hapus Kartu Keluarga)
-  fastify.delete<{ Params: ParamsWithId }>("/api/kk/:id", async (request, reply) => {
+  fastify.delete<{ Params: ParamsWithId }>("/api/kk/:id", { preHandler: requireAdmin }, async (request, reply) => {
     try {
       const { id } = request.params;
 
