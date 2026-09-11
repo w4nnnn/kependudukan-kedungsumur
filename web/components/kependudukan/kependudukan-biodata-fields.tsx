@@ -38,14 +38,18 @@ export function KependudukanBiodataFields<T extends EditPendudukFormValues>({
         <div className="space-y-2 md:col-span-2">
           <label className="text-sm font-medium">Nomor Kartu Keluarga (KK)</label>
           <Input
-            placeholder="16 Digit Nomor KK (Angka)"
+            placeholder="16 Digit Nomor KK (Angka) atau '-'"
             maxLength={16}
-            inputMode="numeric"
-            pattern="[0-9]*"
-            onKeyDown={blockNonNumericKeyDown}
+            onKeyDown={(e) => {
+              if (e.key === "-") return;
+              blockNonNumericKeyDown(e);
+            }}
             {...register("noKk" as any, {
               onChange: (e) => {
-                e.target.value = e.target.value.replace(/\D/g, "")
+                const val = e.target.value;
+                if (val !== "-") {
+                  e.target.value = val.replace(/[^\d]/g, "");
+                }
               },
             })}
           />
@@ -110,7 +114,7 @@ export function KependudukanBiodataFields<T extends EditPendudukFormValues>({
               mode="single"
               captionLayout="dropdown"
               selected={watch("tanggalLahir" as any) as Date}
-              onSelect={(date) => setValue("tanggalLahir" as any, date as any)}
+              onSelect={(date) => setValue("tanggalLahir" as any, date as any, { shouldValidate: true })}
             />
           </PopoverContent>
         </Popover>

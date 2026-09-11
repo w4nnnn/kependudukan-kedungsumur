@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useForm, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { format } from "date-fns"
+import { format, parseISO } from "date-fns"
 import { toast } from "sonner"
 import { API_BASE_URL } from "@/lib/config"
 import {
@@ -55,7 +55,7 @@ export function useEditPenduduk(id: string | undefined) {
           if (json.success && json.data) {
             const data = json.data
             if (data.tanggalLahir) {
-              data.tanggalLahir = new Date(data.tanggalLahir)
+              data.tanggalLahir = typeof data.tanggalLahir === "string" ? parseISO(data.tanggalLahir) : new Date(data.tanggalLahir)
             }
             const safeData = {
               ...data,

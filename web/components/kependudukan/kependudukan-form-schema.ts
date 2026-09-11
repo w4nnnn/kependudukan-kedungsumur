@@ -34,8 +34,9 @@ export const editPendudukFormSchema = z.object({
     .regex(REGEX_NIK, "NIK hanya boleh berisi 16 digit angka"),
   noKk: z
     .string()
-    .length(16, "Nomor KK harus tepat 16 digit")
-    .regex(REGEX_NO_KK, "Nomor KK hanya boleh berisi 16 digit angka"),
+    .refine((val) => val === "-" || (val.length === 16 && REGEX_NO_KK.test(val)), {
+      message: "Nomor KK harus berupa 16 digit angka atau '-' jika belum terdaftar di KK",
+    }),
   namaLengkap: z
     .string()
     .min(3, "Nama Lengkap minimal 3 karakter")
@@ -70,6 +71,10 @@ export const editPendudukFormSchema = z.object({
 })
 
 export const tambahPendudukFormSchema = editPendudukFormSchema.extend({
+  noKk: z
+    .string()
+    .length(16, "Nomor KK harus tepat 16 digit")
+    .regex(REGEX_NO_KK, "Nomor KK hanya boleh berisi 16 digit angka"),
   kkAlamat: z
     .string()
     .optional()

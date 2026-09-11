@@ -97,7 +97,7 @@ export function validatePendudukSchema(item: any, contextName = "data") {
   assert(item.nik.length === 16, `Field '${contextName}.nik' harus 16 digit, didapat: ${item.nik.length}`);
   
   assertType(item.noKk, "string", `${contextName}.noKk`);
-  assert(item.noKk.length === 16, `Field '${contextName}.noKk' harus 16 digit, didapat: ${item.noKk.length}`);
+  assert(item.noKk === "-" || item.noKk.length === 16, `Field '${contextName}.noKk' harus 16 digit atau '-', didapat: ${item.noKk}`);
   
   assertType(item.namaLengkap, "string", `${contextName}.namaLengkap`);
   assertType(item.tempatLahir, "string", `${contextName}.tempatLahir`);
