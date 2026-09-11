@@ -6,6 +6,13 @@ import { eq, and, asc, sql, inArray, ilike } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middlewares/auth.middleware.js";
 import { parseExcelDate } from "../lib/date-utils.js";
 
+function sanitizeExcelValue(value: any): any {
+  if (typeof value === "string" && /^[=+\-@\t\r]/.test(value)) {
+    return `'${value}`;
+  }
+  return value;
+}
+
 export default async function exportImportRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", requireAuth);
 
@@ -160,19 +167,19 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
           no: index + 1,
           nik: item.nik,
           noKk: item.noKk,
-          namaLengkap: item.namaLengkap,
+          namaLengkap: sanitizeExcelValue(item.namaLengkap),
           jenisKelamin: item.jenisKelamin,
-          tempatLahir: item.tempatLahir,
+          tempatLahir: sanitizeExcelValue(item.tempatLahir),
           tanggalLahir: item.tanggalLahir,
-          alamat: item.alamat,
+          alamat: sanitizeExcelValue(item.alamat),
           rt: item.rt,
           rw: item.rw,
-          agama: item.agama,
-          statusPerkawinan: item.statusPerkawinan,
-          shdk: item.shdk,
-          pekerjaan: item.pekerjaan || "-",
-          namaAyah: item.namaAyah || "-",
-          namaIbu: item.namaIbu || "-",
+          agama: sanitizeExcelValue(item.agama),
+          statusPerkawinan: sanitizeExcelValue(item.statusPerkawinan),
+          shdk: sanitizeExcelValue(item.shdk),
+          pekerjaan: sanitizeExcelValue(item.pekerjaan || "-"),
+          namaAyah: sanitizeExcelValue(item.namaAyah || "-"),
+          namaIbu: sanitizeExcelValue(item.namaIbu || "-"),
         });
 
         row.getCell("nik").numFmt = "@";
@@ -270,12 +277,12 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
         const row = worksheet.addRow({
           no: index + 1,
           noKk: kk.noKk,
-          kepalaKeluargaNama: kk.kepalaKeluargaNama || "-",
+          kepalaKeluargaNama: sanitizeExcelValue(kk.kepalaKeluargaNama || "-"),
           kepalaKeluargaNik: kk.kepalaKeluargaNik || "-",
-          alamat: kk.alamat,
+          alamat: sanitizeExcelValue(kk.alamat),
           rt: kk.rt,
           rw: kk.rw,
-          dusun: kk.dusun || "-",
+          dusun: sanitizeExcelValue(kk.dusun || "-"),
           jumlahAnggota: `${memberCounts[kk.id] || 0} Jiwa`,
         });
 
@@ -304,13 +311,50 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ success: false, message: "File Excel (.xlsx) wajib diunggah." });
       }
 
+      const filename = (file.filename || "").toLowerCase();
+      if (!filename.endsWith(".xlsx")) {
+        return reply.status(400).send({
+          success: false,
+          message: "Format file tidak didukung. Harap unggah file spreadsheet Excel dengan ekstensi .xlsx.",
+        });
+      }
+
       const fileBuffer = await file.toBuffer();
+
+      if (
+        fileBuffer.length < 4 ||
+        fileBuffer[0] !== 0x50 ||
+        fileBuffer[1] !== 0x4b ||
+        fileBuffer[2] !== 0x03 ||
+        fileBuffer[3] !== 0x04
+      ) {
+        return reply.status(400).send({
+          success: false,
+          message: "Konten file tidak valid atau bukan file Excel (.xlsx) yang sah.",
+        });
+      }
+
       const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(fileBuffer as any);
+      try {
+        await workbook.xlsx.load(fileBuffer as any);
+      } catch (err: any) {
+        fastify.log.error(err);
+        return reply.status(400).send({
+          success: false,
+          message: "Gagal membaca file Excel. Berkas mungkin rusak atau terproteksi kata sandi.",
+        });
+      }
 
       const worksheet = workbook.worksheets[0];
       if (!worksheet) {
         return reply.status(400).send({ success: false, message: "Lembar kerja Excel kosong." });
+      }
+
+      if (worksheet.rowCount > 5001) {
+        return reply.status(400).send({
+          success: false,
+          message: "Jumlah baris melebihi batas maksimal (maksimum 5.000 baris data per file).",
+        });
       }
 
       const parsedRows: any[] = [];
@@ -444,7 +488,15 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
         kkGroups.set(row.noKk, list);
       }
 
+      const allNikHashes = parsedRows.map((r) => hashKependudukan(r.nik));
+
       await db.transaction(async (tx) => {
+        const existingPendudukList = await tx
+          .select({ nikHash: pendudukTable.nikHash })
+          .from(pendudukTable)
+          .where(inArray(pendudukTable.nikHash, allNikHashes));
+        const existingNikSet = new Set(existingPendudukList.map((p) => p.nikHash));
+
         for (const [noKk, members] of kkGroups.entries()) {
           const noKkHash = hashKependudukan(noKk);
 
@@ -491,12 +543,7 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
             const m = members[i]!;
             const nikHash = hashKependudukan(m.nik);
 
-            const existingPenduduk = await tx
-              .select()
-              .from(pendudukTable)
-              .where(eq(pendudukTable.nikHash, nikHash));
-
-            if (existingPenduduk[0]) {
+            if (existingNikSet.has(nikHash)) {
               skippedCount++;
               continue;
             }
@@ -531,6 +578,7 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
 
             if (created) {
               insertedCount++;
+              existingNikSet.add(nikHash);
               if (isKepala && !kepalaId) {
                 kepalaId = created.id;
               }
