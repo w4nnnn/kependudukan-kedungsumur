@@ -56,12 +56,16 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
         conditions.push(eq(pendudukTable.kartuKeluargaId, kkId));
       }
 
-      if (rt) {
-        conditions.push(eq(pendudukTable.rt, rt));
+      const currentUser = (request as any).user;
+      const effectiveRt = (currentUser?.role !== "admin" && currentUser?.rt) ? currentUser.rt : rt;
+      const effectiveRw = (currentUser?.role !== "admin" && currentUser?.rw) ? currentUser.rw : rw;
+
+      if (effectiveRt) {
+        conditions.push(eq(pendudukTable.rt, effectiveRt));
       }
 
-      if (rw) {
-        conditions.push(eq(pendudukTable.rw, rw));
+      if (effectiveRw) {
+        conditions.push(eq(pendudukTable.rw, effectiveRw));
       }
 
       if (conditions.length > 0) {
@@ -176,6 +180,14 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
 
       if (createKk && (!createKk.noKk || !/^\d{16}$/.test(createKk.noKk))) {
         return reply.status(400).send({ success: false, message: "Nomor KK harus 16 digit." });
+      }
+
+      const currentUser = (request as any).user;
+      if (currentUser?.role !== "admin" && currentUser?.rt && body.rt !== currentUser.rt) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RT ${currentUser.rt}.` });
+      }
+      if (currentUser?.role !== "admin" && currentUser?.rw && body.rw !== currentUser.rw) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RW ${currentUser.rw}.` });
       }
 
       const created = await db.transaction(async (tx) => {
@@ -298,6 +310,9 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params;
       const body = { ...request.body };
+      delete (body as any).id;
+      delete (body as any).createdAt;
+      delete (body as any).updatedAt;
 
       if (body.nik !== undefined && !/^\d{16}$/.test(body.nik)) {
         return reply.status(400).send({ success: false, message: "NIK harus 16 digit angka." });
@@ -318,6 +333,14 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
         const currentRecord = existingList[0];
         if (!currentRecord) {
           throw { statusCode: 404, message: "Data penduduk tidak ditemukan." };
+        }
+
+        const currentUser = (request as any).user;
+        if (currentUser?.role !== "admin" && currentUser?.rt && currentRecord.rt !== currentUser.rt) {
+          throw { statusCode: 403, message: "Akses ditolak. Anda tidak memiliki izin untuk mengubah data di luar RT Anda." };
+        }
+        if (currentUser?.role !== "admin" && currentUser?.rw && currentRecord.rw !== currentUser.rw) {
+          throw { statusCode: 403, message: "Akses ditolak. Anda tidak memiliki izin untuk mengubah data di luar RW Anda." };
         }
 
         if (body.noKk !== undefined) {

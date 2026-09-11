@@ -54,12 +54,16 @@ export default async function kkRoutes(fastify: FastifyInstance) {
         }
       }
 
-      if (rt) {
-        conditions.push(eq(kartuKeluargaTable.rt, rt));
+      const currentUser = (request as any).user;
+      const effectiveRt = (currentUser?.role !== "admin" && currentUser?.rt) ? currentUser.rt : rt;
+      const effectiveRw = (currentUser?.role !== "admin" && currentUser?.rw) ? currentUser.rw : rw;
+
+      if (effectiveRt) {
+        conditions.push(eq(kartuKeluargaTable.rt, effectiveRt));
       }
 
-      if (rw) {
-        conditions.push(eq(kartuKeluargaTable.rw, rw));
+      if (effectiveRw) {
+        conditions.push(eq(kartuKeluargaTable.rw, effectiveRw));
       }
 
       if (dusun) {
@@ -248,6 +252,14 @@ export default async function kkRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ success: false, message: "Nomor KK harus 16 digit angka." });
       }
 
+      const currentUser = (request as any).user;
+      if (currentUser?.role !== "admin" && currentUser?.rt && body.rt !== currentUser.rt) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RT ${currentUser.rt}.` });
+      }
+      if (currentUser?.role !== "admin" && currentUser?.rw && body.rw !== currentUser.rw) {
+        return reply.status(403).send({ success: false, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RW ${currentUser.rw}.` });
+      }
+
       const noKkHash = hashKependudukan(body.noKk);
 
       const result = await db.transaction(async (tx) => {
@@ -377,11 +389,23 @@ export default async function kkRoutes(fastify: FastifyInstance) {
           .from(kartuKeluargaTable)
           .where(eq(kartuKeluargaTable.id, id));
 
-        if (!existingKk[0]) {
+        const currentKk = existingKk[0];
+        if (!currentKk) {
           throw { statusCode: 404, message: "Data Kartu Keluarga tidak ditemukan." };
         }
 
+        const currentUser = (request as any).user;
+        if (currentUser?.role !== "admin" && currentUser?.rt && currentKk.rt !== currentUser.rt) {
+          throw { statusCode: 403, message: "Akses ditolak. Anda tidak memiliki izin untuk mengubah data di luar RT Anda." };
+        }
+        if (currentUser?.role !== "admin" && currentUser?.rw && currentKk.rw !== currentUser.rw) {
+          throw { statusCode: 403, message: "Akses ditolak. Anda tidak memiliki izin untuk mengubah data di luar RW Anda." };
+        }
+
         const updatePayload: Partial<KartuKeluargaInsert> = { ...body };
+        delete (updatePayload as any).id;
+        delete (updatePayload as any).createdAt;
+        delete (updatePayload as any).updatedAt;
         if (body.noKk) {
           const newNoKkHash = hashKependudukan(body.noKk);
           const duplicate = await tx
