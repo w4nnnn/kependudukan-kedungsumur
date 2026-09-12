@@ -130,7 +130,7 @@ export default async function kkRoutes(fastify: FastifyInstance) {
           .from(pendudukTable)
           .where(inArray(pendudukTable.kartuKeluargaId, kkIds))
           .orderBy(
-            asc(sql`cast(coalesce(nullif(${pendudukTable.urutanKk}, ''), '999') as integer)`),
+            asc(sql`cast(coalesce(nullif(regexp_replace(${pendudukTable.urutanKk}, '\\D', '', 'g'), ''), '999') as integer)`),
             asc(pendudukTable.createdAt)
           );
 
@@ -198,7 +198,7 @@ export default async function kkRoutes(fastify: FastifyInstance) {
         .from(pendudukTable)
         .where(eq(pendudukTable.kartuKeluargaId, id))
         .orderBy(
-          asc(sql`cast(coalesce(nullif(${pendudukTable.urutanKk}, ''), '999') as integer)`),
+          asc(sql`cast(coalesce(nullif(regexp_replace(${pendudukTable.urutanKk}, '\\D', '', 'g'), ''), '999') as integer)`),
           asc(pendudukTable.createdAt)
         );
 
@@ -316,6 +316,13 @@ export default async function kkRoutes(fastify: FastifyInstance) {
             throw { statusCode: 400, message: "Penduduk yang dipilih sebagai Kepala Keluarga tidak ditemukan." };
           }
 
+          if (currentUser?.role !== "admin" && currentUser?.rt && targetPenduduk.rt !== currentUser.rt) {
+            throw { statusCode: 403, message: `Akses ditolak. Penduduk yang dipilih berada di luar wilayah RT ${currentUser.rt}.` };
+          }
+          if (currentUser?.role !== "admin" && currentUser?.rw && targetPenduduk.rw !== currentUser.rw) {
+            throw { statusCode: 403, message: `Akses ditolak. Penduduk yang dipilih berada di luar wilayah RW ${currentUser.rw}.` };
+          }
+
           kepalaId = selectedPendudukId;
 
           await tx
@@ -400,10 +407,13 @@ export default async function kkRoutes(fastify: FastifyInstance) {
   });
 
   // 4. PUT /api/kk/:id (Update Data Kartu Keluarga)
-  fastify.put<{ Params: ParamsWithId; Body: Partial<KartuKeluargaInsert> }>("/api/kk/:id", async (request, reply) => {
+  fastify.put<{
+    Params: ParamsWithId;
+    Body: Partial<KartuKeluargaInsert> & { kepalaKeluargaId?: string | null };
+  }>("/api/kk/:id", async (request, reply) => {
     try {
       const { id } = request.params;
-      const { kepalaKeluargaId: _discardKepalaId, ...body } = (request.body || {}) as any;
+      const { kepalaKeluargaId, ...body } = (request.body || {}) as any;
 
       if (body.noKk !== undefined) {
         if (!body.noKk || !/^\d{16}$/.test(body.noKk)) {
@@ -429,11 +439,19 @@ export default async function kkRoutes(fastify: FastifyInstance) {
         if (currentUser?.role !== "admin" && currentUser?.rw && currentKk.rw !== currentUser.rw) {
           throw { statusCode: 403, message: "Akses ditolak. Anda tidak memiliki izin untuk mengubah data di luar RW Anda." };
         }
+        if (currentUser?.role !== "admin" && currentUser?.rt && body.rt && body.rt !== currentUser.rt) {
+          throw { statusCode: 403, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RT ${currentUser.rt}.` };
+        }
+        if (currentUser?.role !== "admin" && currentUser?.rw && body.rw && body.rw !== currentUser.rw) {
+          throw { statusCode: 403, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RW ${currentUser.rw}.` };
+        }
 
         const updatePayload: Partial<KartuKeluargaInsert> = { ...body };
         delete (updatePayload as any).id;
         delete (updatePayload as any).createdAt;
         delete (updatePayload as any).updatedAt;
+        updatePayload.updatedAt = new Date();
+
         if (body.noKk) {
           const newNoKkHash = hashKependudukan(body.noKk);
           const duplicate = await tx
@@ -450,6 +468,70 @@ export default async function kkRoutes(fastify: FastifyInstance) {
             throw { statusCode: 400, message: "Nomor KK sudah terdaftar." };
           }
           updatePayload.noKkHash = newNoKkHash;
+        }
+
+        if (kepalaKeluargaId !== undefined) {
+          if (kepalaKeluargaId) {
+            const [targetMember] = await tx
+              .select()
+              .from(pendudukTable)
+              .where(eq(pendudukTable.id, kepalaKeluargaId));
+
+            if (!targetMember) {
+              throw { statusCode: 400, message: "Penduduk yang dipilih sebagai Kepala Keluarga tidak ditemukan." };
+            }
+
+            if (currentUser?.role !== "admin" && currentUser?.rt && targetMember.rt !== currentUser.rt) {
+              throw { statusCode: 403, message: `Akses ditolak. Penduduk yang dipilih berada di luar wilayah RT ${currentUser.rt}.` };
+            }
+            if (currentUser?.role !== "admin" && currentUser?.rw && targetMember.rw !== currentUser.rw) {
+              throw { statusCode: 403, message: `Akses ditolak. Penduduk yang dipilih berada di luar wilayah RW ${currentUser.rw}.` };
+            }
+
+            updatePayload.kepalaKeluargaId = kepalaKeluargaId;
+
+            await tx
+              .update(pendudukTable)
+              .set({ shdk: "ANGGOTA KELUARGA" })
+              .where(
+                and(
+                  eq(pendudukTable.kartuKeluargaId, id),
+                  eq(pendudukTable.shdk, "KEPALA KELUARGA"),
+                  sql`${pendudukTable.id} != ${kepalaKeluargaId}`
+                )
+              );
+
+            await tx
+              .update(kartuKeluargaTable)
+              .set({ kepalaKeluargaId: null })
+              .where(
+                and(
+                  eq(kartuKeluargaTable.kepalaKeluargaId, kepalaKeluargaId),
+                  sql`${kartuKeluargaTable.id} != ${id}`
+                )
+              );
+
+            await tx
+              .update(pendudukTable)
+              .set({
+                kartuKeluargaId: id,
+                noKk: body.noKk || currentKk.noKk,
+                noKkHash: updatePayload.noKkHash || currentKk.noKkHash,
+                shdk: "KEPALA KELUARGA",
+              })
+              .where(eq(pendudukTable.id, kepalaKeluargaId));
+          } else {
+            updatePayload.kepalaKeluargaId = null;
+            await tx
+              .update(pendudukTable)
+              .set({ shdk: "ANGGOTA KELUARGA" })
+              .where(
+                and(
+                  eq(pendudukTable.kartuKeluargaId, id),
+                  eq(pendudukTable.shdk, "KEPALA KELUARGA")
+                )
+              );
+          }
         }
 
         const updatedData = await tx
@@ -548,6 +630,12 @@ export default async function kkRoutes(fastify: FastifyInstance) {
           throw { statusCode: 403, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RW ${currentUser.rw}.` };
         }
 
+        const [existingCount] = await tx
+          .select({ count: sql<number>`cast(count(${pendudukTable.id}) as integer)` })
+          .from(pendudukTable)
+          .where(eq(pendudukTable.kartuKeluargaId, id));
+        const autoUrutan = String((existingCount?.count ?? 0) + 1);
+
         if (mode === "create" || (!pendudukId && penduduk)) {
           if (!penduduk) {
             throw { statusCode: 400, message: "Data penduduk baru wajib disertakan." };
@@ -580,7 +668,7 @@ export default async function kkRoutes(fastify: FastifyInstance) {
               rt: targetKk.rt,
               rw: targetKk.rw,
               shdk: shdk,
-              urutanKk: urutanKk || "1",
+              urutanKk: urutanKk || autoUrutan,
             })
             .returning();
 
@@ -619,6 +707,13 @@ export default async function kkRoutes(fastify: FastifyInstance) {
           throw { statusCode: 404, message: "Data Penduduk tidak ditemukan." };
         }
 
+        if (currentUser?.role !== "admin" && currentUser?.rt && targetPenduduk.rt !== currentUser.rt) {
+          throw { statusCode: 403, message: `Akses ditolak. Penduduk yang dipilih berada di luar wilayah RT ${currentUser.rt}.` };
+        }
+        if (currentUser?.role !== "admin" && currentUser?.rw && targetPenduduk.rw !== currentUser.rw) {
+          throw { statusCode: 403, message: `Akses ditolak. Penduduk yang dipilih berada di luar wilayah RW ${currentUser.rw}.` };
+        }
+
         await tx
           .update(kartuKeluargaTable)
           .set({ kepalaKeluargaId: null })
@@ -639,7 +734,7 @@ export default async function kkRoutes(fastify: FastifyInstance) {
             rt: targetKk.rt,
             rw: targetKk.rw,
             shdk: shdk,
-            urutanKk: urutanKk || targetPenduduk.urutanKk,
+            urutanKk: urutanKk || (targetPenduduk.kartuKeluargaId === id ? targetPenduduk.urutanKk : autoUrutan),
           })
           .where(eq(pendudukTable.id, pendudukId))
           .returning();
