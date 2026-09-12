@@ -13,28 +13,45 @@ export default async function statsRoutes(fastify: FastifyInstance) {
     try {
       const { rt, rw } = request.query as { rt?: string; rw?: string };
 
+      const currentUser = (request as any).user;
+      if (currentUser?.role !== "admin") {
+        if (currentUser?.rt && rt && rt !== "ALL" && rt !== currentUser.rt) {
+          return reply.status(403).send({
+            success: false,
+            message: `Akses ditolak. Anda hanya berwenang untuk wilayah RT ${currentUser.rt}.`,
+          });
+        }
+        if (currentUser?.rw && rw && rw !== "ALL" && rw !== currentUser.rw) {
+          return reply.status(403).send({
+            success: false,
+            message: `Akses ditolak. Anda hanya berwenang untuk wilayah RW ${currentUser.rw}.`,
+          });
+        }
+      }
+
+      const effectiveRt = (currentUser?.role !== "admin" && currentUser?.rt) ? currentUser.rt : rt;
+      const effectiveRw = (currentUser?.role !== "admin" && currentUser?.rw) ? currentUser.rw : rw;
+
       const pendudukConditions = [];
       const kkConditions = [];
 
-      if (rt && rt !== "ALL") {
-        pendudukConditions.push(eq(pendudukTable.rt, rt));
-        kkConditions.push(eq(kartuKeluargaTable.rt, rt));
+      if (effectiveRt && effectiveRt !== "ALL") {
+        pendudukConditions.push(eq(pendudukTable.rt, effectiveRt));
+        kkConditions.push(eq(kartuKeluargaTable.rt, effectiveRt));
       }
 
-      if (rw && rw !== "ALL") {
-        pendudukConditions.push(eq(pendudukTable.rw, rw));
-        kkConditions.push(eq(kartuKeluargaTable.rw, rw));
+      if (effectiveRw && effectiveRw !== "ALL") {
+        pendudukConditions.push(eq(pendudukTable.rw, effectiveRw));
+        kkConditions.push(eq(kartuKeluargaTable.rw, effectiveRw));
       }
 
       const wherePenduduk = pendudukConditions.length > 0 ? and(...pendudukConditions) : undefined;
       const whereKK = kkConditions.length > 0 ? and(...kkConditions) : undefined;
 
       const [
-        totalPendudukRes,
-        genderCountRes,
+        summaryDemografiRes,
         totalKkRes,
         totalUserRes,
-        kelompokUsiaRes,
         distribusiRtRes,
         distribusiRwRes,
         statusPerkawinanRes,
@@ -47,18 +64,14 @@ export default async function statsRoutes(fastify: FastifyInstance) {
             total: sql<number>`cast(count(${pendudukTable.id}) as integer)`,
             lakiLaki: sql<number>`cast(count(case when ${pendudukTable.jenisKelamin} = 'Laki-laki' then 1 end) as integer)`,
             perempuan: sql<number>`cast(count(case when ${pendudukTable.jenisKelamin} = 'Perempuan' then 1 end) as integer)`,
+            balita: sql<number>`cast(count(case when ${pendudukTable.tanggalLahir} <= CURRENT_DATE and EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 0 and 5 then 1 end) as integer)`,
+            anak: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 6 and 12 then 1 end) as integer)`,
+            remaja: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 13 and 17 then 1 end) as integer)`,
+            produktif: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 18 and 59 then 1 end) as integer)`,
+            lansia: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) >= 60 then 1 end) as integer)`,
           })
           .from(pendudukTable)
           .where(wherePenduduk),
-
-        db
-          .select({
-            jenisKelamin: pendudukTable.jenisKelamin,
-            count: sql<number>`cast(count(${pendudukTable.id}) as integer)`,
-          })
-          .from(pendudukTable)
-          .where(wherePenduduk)
-          .groupBy(pendudukTable.jenisKelamin),
 
         db
           .select({
@@ -72,17 +85,6 @@ export default async function statsRoutes(fastify: FastifyInstance) {
             total: sql<number>`cast(count(${user.id}) as integer)`,
           })
           .from(user),
-
-        db
-          .select({
-            balita: sql<number>`cast(count(case when ${pendudukTable.tanggalLahir} <= CURRENT_DATE and EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 0 and 5 then 1 end) as integer)`,
-            anak: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 6 and 12 then 1 end) as integer)`,
-            remaja: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 13 and 17 then 1 end) as integer)`,
-            produktif: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 18 and 59 then 1 end) as integer)`,
-            lansia: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) >= 60 then 1 end) as integer)`,
-          })
-          .from(pendudukTable)
-          .where(wherePenduduk),
 
         db
           .select({
@@ -150,20 +152,25 @@ export default async function statsRoutes(fastify: FastifyInstance) {
           .orderBy(desc(sql`count(${pendudukTable.id})`)),
       ]);
 
-      const totalPenduduk = totalPendudukRes[0]?.total ?? 0;
+      const totalPenduduk = summaryDemografiRes[0]?.total ?? 0;
       const totalKK = totalKkRes[0]?.total ?? 0;
-      const totalLakiLaki = totalPendudukRes[0]?.lakiLaki ?? 0;
-      const totalPerempuan = totalPendudukRes[0]?.perempuan ?? 0;
+      const totalLakiLaki = summaryDemografiRes[0]?.lakiLaki ?? 0;
+      const totalPerempuan = summaryDemografiRes[0]?.perempuan ?? 0;
       const totalUser = totalUserRes[0]?.total ?? 0;
       const rataRataAnggotaKK = totalKK > 0 ? Number((totalPenduduk / totalKK).toFixed(1)) : 0;
 
-      const usiaRaw = kelompokUsiaRes[0] ?? { balita: 0, anak: 0, remaja: 0, produktif: 0, lansia: 0 };
+      const usiaRaw = summaryDemografiRes[0] ?? { balita: 0, anak: 0, remaja: 0, produktif: 0, lansia: 0 };
       const kelompokUsia = [
         { kelompok: "Balita (0-5 thn)", count: usiaRaw.balita },
         { kelompok: "Anak-anak (6-12 thn)", count: usiaRaw.anak },
         { kelompok: "Remaja (13-17 thn)", count: usiaRaw.remaja },
         { kelompok: "Usia Produktif (18-59 thn)", count: usiaRaw.produktif },
         { kelompok: "Lansia (60+ thn)", count: usiaRaw.lansia },
+      ];
+
+      const gender = [
+        { jenisKelamin: "Laki-laki", count: totalLakiLaki },
+        { jenisKelamin: "Perempuan", count: totalPerempuan },
       ];
 
       return reply.send({
@@ -177,7 +184,7 @@ export default async function statsRoutes(fastify: FastifyInstance) {
             rataRataAnggotaKK,
             totalUser,
           },
-          gender: genderCountRes,
+          gender,
           kelompokUsia,
           distribusiRt: distribusiRtRes,
           distribusiRw: distribusiRwRes,
@@ -200,26 +207,44 @@ export default async function statsRoutes(fastify: FastifyInstance) {
     try {
       const { rt, rw } = request.query as { rt?: string; rw?: string };
 
+      const currentUser = (request as any).user;
+      if (currentUser?.role !== "admin") {
+        if (currentUser?.rt && rt && rt !== "ALL" && rt !== currentUser.rt) {
+          return reply.status(403).send({
+            success: false,
+            message: `Akses ditolak. Anda hanya berwenang untuk wilayah RT ${currentUser.rt}.`,
+          });
+        }
+        if (currentUser?.rw && rw && rw !== "ALL" && rw !== currentUser.rw) {
+          return reply.status(403).send({
+            success: false,
+            message: `Akses ditolak. Anda hanya berwenang untuk wilayah RW ${currentUser.rw}.`,
+          });
+        }
+      }
+
+      const effectiveRt = (currentUser?.role !== "admin" && currentUser?.rt) ? currentUser.rt : rt;
+      const effectiveRw = (currentUser?.role !== "admin" && currentUser?.rw) ? currentUser.rw : rw;
+
       const pendudukConditions = [];
       const kkConditions = [];
 
-      if (rt && rt !== "ALL") {
-        pendudukConditions.push(eq(pendudukTable.rt, rt));
-        kkConditions.push(eq(kartuKeluargaTable.rt, rt));
+      if (effectiveRt && effectiveRt !== "ALL") {
+        pendudukConditions.push(eq(pendudukTable.rt, effectiveRt));
+        kkConditions.push(eq(kartuKeluargaTable.rt, effectiveRt));
       }
 
-      if (rw && rw !== "ALL") {
-        pendudukConditions.push(eq(pendudukTable.rw, rw));
-        kkConditions.push(eq(kartuKeluargaTable.rw, rw));
+      if (effectiveRw && effectiveRw !== "ALL") {
+        pendudukConditions.push(eq(pendudukTable.rw, effectiveRw));
+        kkConditions.push(eq(kartuKeluargaTable.rw, effectiveRw));
       }
 
       const wherePenduduk = pendudukConditions.length > 0 ? and(...pendudukConditions) : undefined;
       const whereKK = kkConditions.length > 0 ? and(...kkConditions) : undefined;
 
       const [
-        totalPendudukRes,
+        summaryDemografiRes,
         totalKkRes,
-        kelompokUsiaRes,
         distribusiRtRes,
         statusPerkawinanRes,
         pekerjaanRes,
@@ -229,6 +254,11 @@ export default async function statsRoutes(fastify: FastifyInstance) {
             total: sql<number>`cast(count(${pendudukTable.id}) as integer)`,
             lakiLaki: sql<number>`cast(count(case when ${pendudukTable.jenisKelamin} = 'Laki-laki' then 1 end) as integer)`,
             perempuan: sql<number>`cast(count(case when ${pendudukTable.jenisKelamin} = 'Perempuan' then 1 end) as integer)`,
+            balita: sql<number>`cast(count(case when ${pendudukTable.tanggalLahir} <= CURRENT_DATE and EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 0 and 5 then 1 end) as integer)`,
+            anak: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 6 and 12 then 1 end) as integer)`,
+            remaja: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 13 and 17 then 1 end) as integer)`,
+            produktif: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 18 and 59 then 1 end) as integer)`,
+            lansia: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) >= 60 then 1 end) as integer)`,
           })
           .from(pendudukTable)
           .where(wherePenduduk),
@@ -239,17 +269,6 @@ export default async function statsRoutes(fastify: FastifyInstance) {
           })
           .from(kartuKeluargaTable)
           .where(whereKK),
-
-        db
-          .select({
-            balita: sql<number>`cast(count(case when ${pendudukTable.tanggalLahir} <= CURRENT_DATE and EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 0 and 5 then 1 end) as integer)`,
-            anak: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 6 and 12 then 1 end) as integer)`,
-            remaja: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 13 and 17 then 1 end) as integer)`,
-            produktif: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) between 18 and 59 then 1 end) as integer)`,
-            lansia: sql<number>`cast(count(case when EXTRACT(YEAR FROM age(CURRENT_DATE, ${pendudukTable.tanggalLahir})) >= 60 then 1 end) as integer)`,
-          })
-          .from(pendudukTable)
-          .where(wherePenduduk),
 
         db
           .select({
@@ -285,13 +304,13 @@ export default async function statsRoutes(fastify: FastifyInstance) {
           .limit(5),
       ]);
 
-      const totalPenduduk = totalPendudukRes[0]?.total ?? 0;
+      const totalPenduduk = summaryDemografiRes[0]?.total ?? 0;
       const totalKK = totalKkRes[0]?.total ?? 0;
-      const totalLakiLaki = totalPendudukRes[0]?.lakiLaki ?? 0;
-      const totalPerempuan = totalPendudukRes[0]?.perempuan ?? 0;
+      const totalLakiLaki = summaryDemografiRes[0]?.lakiLaki ?? 0;
+      const totalPerempuan = summaryDemografiRes[0]?.perempuan ?? 0;
       const rataRataKK = totalKK > 0 ? (totalPenduduk / totalKK).toFixed(1) : "0";
 
-      const usia = kelompokUsiaRes[0] ?? { balita: 0, anak: 0, remaja: 0, produktif: 0, lansia: 0 };
+      const usia = summaryDemografiRes[0] ?? { balita: 0, anak: 0, remaja: 0, produktif: 0, lansia: 0 };
 
       const doc = new PDFDocument({
         size: "A4",
@@ -328,7 +347,7 @@ export default async function statsRoutes(fastify: FastifyInstance) {
         .font("Helvetica-Bold")
         .text("LAPORAN REKAPITULASI STATISTIK KEPENDUDUKAN", 45, 126, { width: 505, align: "center" });
 
-      const wilayahLabel = (rt && rt !== "ALL" ? `RT ${rt} ` : "") + (rw && rw !== "ALL" ? `RW ${rw} ` : "");
+      const wilayahLabel = (effectiveRt && effectiveRt !== "ALL" ? `RT ${effectiveRt} ` : "") + (effectiveRw && effectiveRw !== "ALL" ? `RW ${effectiveRw} ` : "");
       doc
         .fontSize(9)
         .font("Helvetica")
