@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/index.js";
 import { pendudukTable, kartuKeluargaTable, hashKependudukan } from "../db/schema/schema.js";
-import { eq, ilike, and, sql, desc, asc } from "drizzle-orm";
+import { eq, ilike, and, or, sql, desc, asc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middlewares/auth.middleware.js";
 import { uploadFotoPenduduk, deleteFotoPenduduk, getPublicFotoUrl, getFotoStream } from "../lib/minio.js";
 import path from "path";
@@ -36,7 +36,13 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
       if (search) {
         const trimmed = String(search).trim();
         if (/^\d{16}$/.test(trimmed)) {
-          conditions.push(eq(pendudukTable.nikHash, hashKependudukan(trimmed)));
+          const searchHash = hashKependudukan(trimmed);
+          conditions.push(
+            or(
+              eq(pendudukTable.nikHash, searchHash),
+              eq(pendudukTable.noKkHash, searchHash)
+            )
+          );
         } else {
           conditions.push(ilike(pendudukTable.namaLengkap, `%${trimmed}%`));
         }
@@ -139,7 +145,7 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
             .from(pendudukTable)
             .where(eq(pendudukTable.kartuKeluargaId, record.kartuKeluargaId))
             .orderBy(
-              asc(sql`cast(coalesce(nullif(${pendudukTable.urutanKk}, ''), '999') as integer)`),
+              asc(sql`cast(coalesce(nullif(regexp_replace(${pendudukTable.urutanKk}, '\\D', '', 'g'), ''), '999') as integer)`),
               asc(pendudukTable.createdAt)
             );
 
@@ -251,21 +257,49 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
           kartuKeluargaId = insertedKk[0].id;
         }
 
-        const noKkHash = hashKependudukan(noKk);
-
-        if (!kartuKeluargaId) {
+        if (!kartuKeluargaId && noKk && noKk !== "-") {
+          const checkHash = hashKependudukan(noKk);
           const existingKk = await tx
             .select()
             .from(kartuKeluargaTable)
-            .where(eq(kartuKeluargaTable.noKkHash, noKkHash));
+            .where(eq(kartuKeluargaTable.noKkHash, checkHash));
           if (existingKk[0]) {
+            if (currentUser?.role !== "admin" && currentUser?.rt && existingKk[0].rt !== currentUser.rt) {
+              throw { statusCode: 403, message: `Akses ditolak. Kartu Keluarga dengan No. KK tersebut berada di luar wilayah RT ${currentUser.rt}.` };
+            }
+            if (currentUser?.role !== "admin" && currentUser?.rw && existingKk[0].rw !== currentUser.rw) {
+              throw { statusCode: 403, message: `Akses ditolak. Kartu Keluarga dengan No. KK tersebut berada di luar wilayah RW ${currentUser.rw}.` };
+            }
             kartuKeluargaId = existingKk[0].id;
           }
         }
 
+        if (kartuKeluargaId) {
+          const targetKk = await tx
+            .select()
+            .from(kartuKeluargaTable)
+            .where(eq(kartuKeluargaTable.id, kartuKeluargaId));
+
+          if (!targetKk[0]) {
+            throw { statusCode: 400, message: "Data Kartu Keluarga tidak ditemukan." };
+          }
+
+          if (currentUser?.role !== "admin" && currentUser?.rt && targetKk[0].rt !== currentUser.rt) {
+            throw { statusCode: 403, message: `Akses ditolak. Kartu Keluarga tujuan berada di luar wilayah RT ${currentUser.rt}.` };
+          }
+          if (currentUser?.role !== "admin" && currentUser?.rw && targetKk[0].rw !== currentUser.rw) {
+            throw { statusCode: 403, message: `Akses ditolak. Kartu Keluarga tujuan berada di luar wilayah RW ${currentUser.rw}.` };
+          }
+
+          noKk = targetKk[0].noKk;
+        }
+
+        const safeNoKk = noKk || "-";
+        const noKkHash = hashKependudukan(safeNoKk);
+
         const newPendudukData = {
           ...body,
-          noKk,
+          noKk: safeNoKk,
           kartuKeluargaId,
           nikHash: hashKependudukan(body.nik),
           noKkHash: noKkHash,
@@ -367,6 +401,12 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
         if (currentUser?.role !== "admin" && currentUser?.rw && currentRecord.rw !== currentUser.rw) {
           throw { statusCode: 403, message: "Akses ditolak. Anda tidak memiliki izin untuk mengubah data di luar RW Anda." };
         }
+        if (currentUser?.role !== "admin" && currentUser?.rt && body.rt && body.rt !== currentUser.rt) {
+          throw { statusCode: 403, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RT ${currentUser.rt}.` };
+        }
+        if (currentUser?.role !== "admin" && currentUser?.rw && body.rw && body.rw !== currentUser.rw) {
+          throw { statusCode: 403, message: `Akses ditolak. Anda hanya berwenang untuk wilayah RW ${currentUser.rw}.` };
+        }
 
         if (body.noKk !== undefined) {
           if (body.noKk === "-") {
@@ -394,6 +434,12 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
               .where(eq(kartuKeluargaTable.noKkHash, newNoKkHash));
 
             if (existingKk[0]) {
+              if (currentUser?.role !== "admin" && currentUser?.rt && existingKk[0].rt !== currentUser.rt) {
+                throw { statusCode: 403, message: `Akses ditolak. Kartu Keluarga dengan No. KK tersebut berada di luar wilayah RT ${currentUser.rt}.` };
+              }
+              if (currentUser?.role !== "admin" && currentUser?.rw && existingKk[0].rw !== currentUser.rw) {
+                throw { statusCode: 403, message: `Akses ditolak. Kartu Keluarga dengan No. KK tersebut berada di luar wilayah RW ${currentUser.rw}.` };
+              }
               body.kartuKeluargaId = existingKk[0].id;
             } else {
               const [newKk] = await tx
@@ -452,10 +498,19 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
               .from(kartuKeluargaTable)
               .where(eq(kartuKeluargaTable.id, body.kartuKeluargaId));
 
-            if (targetKk[0]) {
-              body.noKk = targetKk[0].noKk;
-              body.noKkHash = targetKk[0].noKkHash;
+            if (!targetKk[0]) {
+              throw { statusCode: 404, message: "Data Kartu Keluarga tidak ditemukan." };
             }
+
+            if (currentUser?.role !== "admin" && currentUser?.rt && targetKk[0].rt !== currentUser.rt) {
+              throw { statusCode: 403, message: `Akses ditolak. Kartu Keluarga tujuan berada di luar wilayah RT ${currentUser.rt}.` };
+            }
+            if (currentUser?.role !== "admin" && currentUser?.rw && targetKk[0].rw !== currentUser.rw) {
+              throw { statusCode: 403, message: `Akses ditolak. Kartu Keluarga tujuan berada di luar wilayah RW ${currentUser.rw}.` };
+            }
+
+            body.noKk = targetKk[0].noKk;
+            body.noKkHash = targetKk[0].noKkHash;
 
             if (
               currentRecord.kartuKeluargaId &&
@@ -513,6 +568,16 @@ export default async function pendudukRoutes(fastify: FastifyInstance) {
                 .update(kartuKeluargaTable)
                 .set(kkSyncPayload)
                 .where(eq(kartuKeluargaTable.id, updatedRecord.kartuKeluargaId));
+
+              await tx
+                .update(pendudukTable)
+                .set(kkSyncPayload)
+                .where(
+                  and(
+                    eq(pendudukTable.kartuKeluargaId, updatedRecord.kartuKeluargaId),
+                    sql`${pendudukTable.id} != ${updatedRecord.id}`
+                  )
+                );
             }
           } else if (
             currentRecord.kartuKeluargaId === updatedRecord.kartuKeluargaId &&
