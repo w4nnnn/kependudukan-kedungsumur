@@ -389,10 +389,13 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
         const colIdx = colMap[key] || fallbackColIndex;
         const cell = row.getCell(colIdx);
         if (!cell) return "";
+        if (cell.text !== undefined && cell.text !== null && String(cell.text).trim() !== "") {
+          return String(cell.text).trim();
+        }
         if (typeof cell.value === "number") {
           return String(BigInt(Math.floor(cell.value)));
         }
-        return String(cell.text || cell.value || "").trim();
+        return String(cell.value || "").trim();
       };
 
       worksheet.eachRow((row, rowNumber) => {
@@ -470,22 +473,25 @@ export default async function exportImportRoutes(fastify: FastifyInstance) {
           }
         }
 
+        const cleanRt = String(rt || "").replace(/\D/g, "").slice(-3).padStart(3, "0");
+        const cleanRw = String(rw || "").replace(/\D/g, "").slice(-3).padStart(3, "0");
+
         parsedRows.push({
           nik,
           noKk,
-          namaLengkap,
+          namaLengkap: namaLengkap.slice(0, 255),
           jenisKelamin: normalizedJk,
-          tempatLahir,
+          tempatLahir: tempatLahir.slice(0, 100),
           tanggalLahir,
-          alamat,
-          rt: rt.padStart(3, "0"),
-          rw: rw.padStart(3, "0"),
+          alamat: alamat.slice(0, 255),
+          rt: cleanRt,
+          rw: cleanRw,
           agama: normalizedAgama,
           statusPerkawinan: normalizedStatusKawin,
           shdk,
-          pekerjaan: pekerjaan || "-",
-          namaAyah,
-          namaIbu,
+          pekerjaan: (pekerjaan || "-").slice(0, 100),
+          namaAyah: namaAyah ? namaAyah.slice(0, 255) : null,
+          namaIbu: namaIbu ? namaIbu.slice(0, 255) : null,
         });
       });
 
