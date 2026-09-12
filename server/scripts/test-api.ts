@@ -6,6 +6,12 @@ import { runPendudukTests } from "./tests/penduduk.test.js";
 import { runKKTests } from "./tests/kk.test.js";
 import { runStatsTests } from "./tests/stats.test.js";
 import { runExportImportTests } from "./tests/export-import.test.js";
+import { runRbacBoundaryTests } from "./tests/rbac-boundary.test.js";
+import { runDataSyncShdkTests } from "./tests/data-sync-shdk.test.js";
+import { runRobustnessInputTests } from "./tests/robustness-input.test.js";
+import { runPerformanceConcurrencyTests } from "./tests/performance-concurrency.test.js";
+import { runMemberSequenceTests } from "./tests/member-sequence-validation.test.js";
+import { runSecurityRateLimitTests } from "./tests/security-login-rate-limit.test.js";
 
 async function main() {
   const client = new TestClient();
@@ -36,7 +42,13 @@ async function main() {
   await runKKTests(client, runner);
   await runStatsTests(client, runner);
   await runExportImportTests(client, runner);
+  await runRbacBoundaryTests(client, runner);
+  await runDataSyncShdkTests(client, runner);
+  await runRobustnessInputTests(client, runner);
+  await runPerformanceConcurrencyTests(client, runner);
+  await runMemberSequenceTests(client, runner);
   await runSignOutTests(client, runner);
+  await runSecurityRateLimitTests(client, runner);
 
   runner.printSummary();
 }
