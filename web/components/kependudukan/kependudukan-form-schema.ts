@@ -24,6 +24,7 @@ export const SHDK_OPTIONS = [
   "MERTUA",
   "FAMILI LAIN",
   "PEMBANTU",
+  "ANGGOTA KELUARGA",
   "LAINNYA",
 ] as const
 

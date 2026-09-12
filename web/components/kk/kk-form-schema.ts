@@ -41,6 +41,7 @@ export const editKkFormSchema = z.object({
       message: "Kode Pos harus 5 digit angka",
     }),
   tanggalDikeluarkan: z.date().optional(),
+  kepalaKeluargaId: z.string().optional().nullable(),
 })
 
 export const tambahKkFormSchema = editKkFormSchema.extend({

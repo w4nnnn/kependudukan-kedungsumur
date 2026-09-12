@@ -7,12 +7,14 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { format, parseISO } from "date-fns"
 import { toast } from "sonner"
 import { API_BASE_URL } from "@/lib/config"
+import type { AnggotaPenduduk } from "./types"
 import { editKkFormSchema, type EditKkFormValues } from "./kk-form-schema"
 
 export function useEditKk(routeId: string | undefined) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(true)
+  const [anggotaList, setAnggotaList] = useState<AnggotaPenduduk[]>([])
 
   const form = useForm<EditKkFormValues>({
     resolver: zodResolver(editKkFormSchema),
@@ -24,6 +26,7 @@ export function useEditKk(routeId: string | undefined) {
       dusun: "",
       kodePos: "",
       tanggalDikeluarkan: undefined,
+      kepalaKeluargaId: "",
     },
   })
 
@@ -42,6 +45,7 @@ export function useEditKk(routeId: string | undefined) {
           const json = await res.json()
           if (json.success && json.data) {
             const kk = json.data
+            setAnggotaList(kk.anggota || [])
             reset({
               noKk: kk.noKk || "",
               alamat: kk.alamat || "",
@@ -50,6 +54,7 @@ export function useEditKk(routeId: string | undefined) {
               dusun: kk.dusun || "",
               kodePos: kk.kodePos || "",
               tanggalDikeluarkan: kk.tanggalDikeluarkan ? parseISO(kk.tanggalDikeluarkan) : undefined,
+              kepalaKeluargaId: kk.kepalaKeluargaId || "",
             })
           } else {
             toast.error("Gagal memuat data KK")
@@ -87,6 +92,7 @@ export function useEditKk(routeId: string | undefined) {
     try {
       const payload = {
         ...data,
+        kepalaKeluargaId: data.kepalaKeluargaId || null,
         tanggalDikeluarkan: data.tanggalDikeluarkan
           ? format(data.tanggalDikeluarkan, "yyyy-MM-dd")
           : null,
@@ -117,6 +123,7 @@ export function useEditKk(routeId: string | undefined) {
     form,
     isLoading,
     isFetching,
+    anggotaList,
     onSubmit,
     onInvalid,
   }

@@ -7,13 +7,22 @@ import { blockNonNumericKeyDown } from "@/lib/validation"
 import { Input } from "@/components/ui/input"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { EditKkFormValues } from "./kk-form-schema"
+import type { AnggotaPenduduk } from "./types"
 
 interface KkFormFieldsProps<T extends EditKkFormValues> {
   form: UseFormReturn<T>
+  anggotaList?: AnggotaPenduduk[]
 }
 
-export function KkFormFields<T extends EditKkFormValues>({ form }: KkFormFieldsProps<T>) {
+export function KkFormFields<T extends EditKkFormValues>({ form, anggotaList }: KkFormFieldsProps<T>) {
   const {
     register,
     setValue,
@@ -23,6 +32,30 @@ export function KkFormFields<T extends EditKkFormValues>({ form }: KkFormFieldsP
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {anggotaList && anggotaList.length > 0 && (
+        <div className="space-y-2 md:col-span-2">
+          <label className="text-sm font-medium">Kepala Keluarga</label>
+          <Select
+            value={watch("kepalaKeluargaId" as any) || "none"}
+            onValueChange={(val) =>
+              setValue("kepalaKeluargaId" as any, val === "none" ? null : (val as any))
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Pilih Kepala Keluarga" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">-- Belum Ditentukan --</SelectItem>
+              {anggotaList.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.namaLengkap} (NIK: {m.nik}) {m.shdk === "KEPALA KELUARGA" ? "★" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <div className="space-y-2 md:col-span-2">
         <label className="text-sm font-medium">Nomor Kartu Keluarga (KK) (16 Digit Angka)</label>
         <Input
