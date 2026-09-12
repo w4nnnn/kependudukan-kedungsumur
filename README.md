@@ -52,10 +52,9 @@ Aplikasi modern untuk pengelolaan administrasi data penduduk desa dengan enkrips
 kependudukan-kedungsumur/
 ├── ecosystem.config.cjs        # Konfigurasi PM2 Process Manager
 ├── docs/                       # Dokumentasi API & Spesifikasi Desain
-│   ├── api/
-│   │   ├── auth.md             # Dokumentasi API Autentikasi
-│   │   └── penduduk.md         # Dokumentasi API Penduduk & Foto
-│   └── superpowers/            # Design specs & implementation plans
+│   └── api/
+│       ├── auth.md             # Dokumentasi API Autentikasi
+│       └── penduduk.md         # Dokumentasi API Penduduk & Foto
 ├── server/                     # Backend Fastify API
 │   ├── drizzle/                # SQL Migration files Drizzle
 │   ├── src/
