@@ -3,12 +3,62 @@ import { auth } from "../lib/auth.js";
 import { fromNodeHeaders } from "better-auth/node";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 
+const signinFailures = new Map<string, { count: number; resetTime: number }>();
+
+function isSigninThrottled(ip: string, username = ""): boolean {
+  const now = Date.now();
+  const key = `${ip}:${username.toLowerCase().trim()}`;
+  const entry = signinFailures.get(key);
+  if (!entry) return false;
+  if (now > entry.resetTime) {
+    signinFailures.delete(key);
+    return false;
+  }
+  return entry.count >= 10;
+}
+
+function recordSigninAttempt(ip: string, username = "", isFailure: boolean) {
+  const now = Date.now();
+  const key = `${ip}:${username.toLowerCase().trim()}`;
+  if (!isFailure) {
+    signinFailures.delete(key);
+    return;
+  }
+  const entry = signinFailures.get(key);
+  if (!entry || now > entry.resetTime) {
+    signinFailures.set(key, { count: 1, resetTime: now + 60000 });
+  } else {
+    entry.count++;
+  }
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of signinFailures.entries()) {
+    if (now > entry.resetTime) {
+      signinFailures.delete(key);
+    }
+  }
+}, 60000).unref();
+
 export default async function authRoutes(fastify: FastifyInstance) {
   fastify.route({
     method: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     url: "/api/auth/*",
     async handler(request, reply) {
       try {
+        const isSignin = request.method === "POST" && request.url.includes("/sign-in");
+        const ip = request.ip || (request.headers["x-forwarded-for"] as string) || "127.0.0.1";
+        const signinUser = String((request.body as any)?.username || (request.body as any)?.email || "");
+
+        if (isSignin && isSigninThrottled(ip, signinUser)) {
+          return reply.status(429).send({
+            statusCode: 429,
+            error: "Too Many Requests",
+            message: "Terlalu banyak percobaan login gagal. Harap tunggu beberapa saat sebelum mencoba lagi.",
+          });
+        }
+
         const protocol = request.protocol || (request.headers["x-forwarded-proto"] as string) || "http";
         const host = (request.headers["x-forwarded-host"] as string) || request.headers.host || "localhost";
         const url = new URL(request.url, `${protocol}://${host}`);
@@ -22,6 +72,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
         });
 
         const response = await auth.handler(req);
+
+        if (isSignin) {
+          const isFailure = response.status >= 400;
+          recordSigninAttempt(ip, signinUser, isFailure);
+        }
 
         reply.status(response.status);
 

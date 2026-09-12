@@ -40,6 +40,13 @@ app.setErrorHandler((error: any, request, reply) => {
   });
 });
 
+app.addHook("onSend", async (request, reply) => {
+  reply.header("X-Content-Type-Options", "nosniff");
+  reply.header("X-Frame-Options", "SAMEORIGIN");
+  reply.header("X-XSS-Protection", "1; mode=block");
+  reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
+});
+
 app.register(cors, {
   origin: process.env.FRONTEND_URL || "http://localhost:3000",
   credentials: true,
