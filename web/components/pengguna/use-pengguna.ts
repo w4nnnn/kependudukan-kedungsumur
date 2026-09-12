@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import { authClient } from "@/lib/auth-client"
 import type { AppUser } from "./types"
@@ -9,6 +9,7 @@ export function usePengguna(session: unknown) {
   const [dataUsers, setDataUsers] = useState<AppUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [selectedRt, setSelectedRt] = useState<string>("ALL")
   const [selectedRw, setSelectedRw] = useState<string>("ALL")
   const [currentPage, setCurrentPage] = useState(1)
@@ -19,71 +20,73 @@ export function usePengguna(session: unknown) {
 
   const totalPages = Math.max(1, Math.ceil(totalData / limit))
 
-  const fetchUsers = async (search = "", page = 1) => {
-    setIsLoading(true)
-    try {
-      const isFilteredByRtRw = selectedRt !== "ALL" || selectedRw !== "ALL"
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setCurrentPage(1)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
-      const res = await authClient.admin.listUsers({
-        query: {
-          limit: isFilteredByRtRw ? 500 : limit,
-          offset: isFilteredByRtRw ? 0 : (page - 1) * limit,
-          ...(search.trim()
-            ? {
-                searchValue: search.trim(),
-                searchField: search.includes("@") ? ("email" as const) : ("name" as const),
-              }
-            : {}),
-        },
-      })
+  const fetchUsers = useCallback(
+    async (search = "", page = 1) => {
+      setIsLoading(true)
+      try {
+        const isFilteredByRtRw = selectedRt !== "ALL" || selectedRw !== "ALL"
 
-      if (res.data) {
-        let users = (res.data.users as AppUser[]) || []
-
-        if (selectedRt !== "ALL") {
-          users = users.filter((u) => u.rt === selectedRt)
-        }
-        if (selectedRw !== "ALL") {
-          users = users.filter((u) => u.rw === selectedRw)
-        }
-
-        if (isFilteredByRtRw) {
-          setTotalData(users.length)
-          const startIndex = (page - 1) * limit
-          setDataUsers(users.slice(startIndex, startIndex + limit))
-        } else {
-          setTotalData((res.data as any).total ?? users.length)
-          setDataUsers(users)
-        }
-      } else if (res.error) {
-        toast.error("Gagal memuat data pengguna", {
-          description: res.error.message || "Pastikan Anda memiliki hak akses admin.",
+        const res = await authClient.admin.listUsers({
+          query: {
+            limit: isFilteredByRtRw ? 500 : limit,
+            offset: isFilteredByRtRw ? 0 : (page - 1) * limit,
+            ...(search.trim()
+              ? {
+                  searchValue: search.trim(),
+                  searchField: search.includes("@") ? ("email" as const) : ("name" as const),
+                }
+              : {}),
+          },
         })
+
+        if (res.data) {
+          let users = (res.data.users as AppUser[]) || []
+
+          if (selectedRt !== "ALL") {
+            users = users.filter((u) => u.rt === selectedRt)
+          }
+          if (selectedRw !== "ALL") {
+            users = users.filter((u) => u.rw === selectedRw)
+          }
+
+          if (isFilteredByRtRw) {
+            setTotalData(users.length)
+            const startIndex = (page - 1) * limit
+            setDataUsers(users.slice(startIndex, startIndex + limit))
+          } else {
+            setTotalData((res.data as any).total ?? users.length)
+            setDataUsers(users)
+          }
+        } else if (res.error) {
+          toast.error("Gagal memuat data pengguna", {
+            description: res.error.message || "Pastikan Anda memiliki hak akses admin.",
+          })
+        }
+      } catch (error) {
+        console.error("Gagal mengambil data pengguna", error)
+        toast.error("Terjadi kesalahan jaringan", {
+          description: "Gagal terhubung ke server.",
+        })
+      } finally {
+        setIsLoading(false)
       }
-    } catch (error) {
-      console.error("Gagal mengambil data pengguna", error)
-      toast.error("Terjadi kesalahan jaringan", {
-        description: "Gagal terhubung ke server.",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    },
+    [selectedRt, selectedRw, limit]
+  )
 
   useEffect(() => {
     if (session) {
-      fetchUsers(searchQuery, currentPage)
+      fetchUsers(debouncedSearch, currentPage)
     }
-  }, [session, currentPage, selectedRt, selectedRw])
-
-  useEffect(() => {
-    if (!session) return
-    const delayDebounceFn = setTimeout(() => {
-      setCurrentPage(1)
-      fetchUsers(searchQuery, 1)
-    }, 500)
-    return () => clearTimeout(delayDebounceFn)
-  }, [searchQuery, session])
+  }, [session, debouncedSearch, currentPage, selectedRt, selectedRw, fetchUsers])
 
   const handleDelete = async () => {
     if (!deleteData) return
@@ -107,7 +110,7 @@ export function usePengguna(session: unknown) {
         toast.success("Berhasil", {
           description: `Pengguna ${deleteData.name} telah dihapus dari sistem.`,
         })
-        fetchUsers(searchQuery, currentPage)
+        fetchUsers(debouncedSearch, currentPage)
       } else if (res.error) {
         toast.error("Gagal menghapus pengguna", {
           description: res.error.message || "Terjadi kesalahan.",
