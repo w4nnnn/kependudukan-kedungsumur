@@ -2,9 +2,9 @@
 
 import Link from "next/link"
 import { Users, UserMinus } from "lucide-react"
-import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { formatDateId } from "@/lib/utils"
 import {
   Table,
   TableBody,
@@ -91,7 +91,7 @@ export function KkAnggotaTable({ anggota, onRemove }: KkAnggotaTableProps) {
                   <TableCell className="font-mono text-xs">{item.nik}</TableCell>
                   <TableCell className="text-xs">{item.jenisKelamin}</TableCell>
                   <TableCell className="text-xs">
-                    {item.tempatLahir}, {format(new Date(item.tanggalLahir), "dd/MM/yyyy")}
+                    {item.tempatLahir}, {formatDateId(item.tanggalLahir, "dd/MM/yyyy")}
                   </TableCell>
                   <TableCell className="text-xs">{item.agama}</TableCell>
                   <TableCell>

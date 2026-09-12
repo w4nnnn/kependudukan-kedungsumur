@@ -6,6 +6,7 @@ import { id as localeId } from "date-fns/locale"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { formatDateId } from "@/lib/utils"
 import type { Penduduk } from "./types"
 
 function getInitials(name: string) {
@@ -70,7 +71,7 @@ export function DataPribadiCard({ data }: { data: Penduduk }) {
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">Tempat, Tanggal Lahir</p>
             <p className="font-medium">
-              {data.tempatLahir}, {format(new Date(data.tanggalLahir), "dd MMMM yyyy", { locale: localeId })}
+              {data.tempatLahir}, {formatDateId(data.tanggalLahir, "dd MMMM yyyy")}
             </p>
           </div>
         </div>

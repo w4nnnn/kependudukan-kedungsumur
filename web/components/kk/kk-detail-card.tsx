@@ -1,9 +1,8 @@
 "use client"
 
 import { UserCheck, MapPin, Home, Calendar } from "lucide-react"
-import { format, parseISO } from "date-fns"
-import { id as localeId } from "date-fns/locale"
 import { Card, CardContent } from "@/components/ui/card"
+import { formatDateId } from "@/lib/utils"
 import type { KartuKeluargaDetail } from "./types"
 
 export function KkDetailCard({ data }: { data: KartuKeluargaDetail }) {
@@ -64,7 +63,7 @@ export function KkDetailCard({ data }: { data: KartuKeluargaDetail }) {
                 </span>
                 <p className="font-medium text-foreground">
                   {data.tanggalDikeluarkan
-                    ? format(parseISO(data.tanggalDikeluarkan), "dd MMMM yyyy", { locale: localeId })
+                    ? formatDateId(data.tanggalDikeluarkan, "dd MMMM yyyy")
                     : "Tidak Tercatat"}
                 </p>
               </div>

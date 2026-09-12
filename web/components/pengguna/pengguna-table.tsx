@@ -13,10 +13,9 @@ import {
   Ban,
   CheckCircle2,
 } from "lucide-react"
-import { format } from "date-fns"
-import { id as localeId } from "date-fns/locale"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { formatDateId } from "@/lib/utils"
 import {
   Table,
   TableBody,
@@ -139,9 +138,7 @@ export function PenggunaTable({
                   )}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  {user.createdAt
-                    ? format(new Date(user.createdAt), "dd MMM yyyy", { locale: localeId })
-                    : "-"}
+                  {formatDateId(user.createdAt, "dd MMM yyyy")}
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
